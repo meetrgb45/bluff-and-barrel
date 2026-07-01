@@ -5,3 +5,9 @@ typechain-types
 coverage
 coverage.json
 .env
+
+# Hardhat Ignition
+ignition/deployments/
+
+# @fhevm/hardhat-plugin generated temp files
+fhevmTemp/

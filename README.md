@@ -33,9 +33,9 @@ USDC:        0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238
 
 ## How FHE Works Here
 
-**Cards** — encrypted at deal time with `FHE.randEuint8()`. Only the player can decrypt their own hand via `fhevmjs.userDecrypt()`.
+**Cards** — encrypted at deal time with `FHE.randEuint8()`. Only the player can decrypt their own hand via `sdk.decryption.decryptValues()` from `@zama-fhe/react-sdk`.
 
-**Challenge** — contract computes `FHE.eq(card, target)` entirely in encrypted space. Result is an `ebool` handle. Anyone calls `fhevmjs.publicDecrypt()` → gets cleartext + Zama KMS proof → submits `publishChallengeResult(bool, abiEncoded, proof)` → `FHE.checkSignatures()` verifies on-chain.
+**Challenge** — contract computes `FHE.eq(card, target)` entirely in encrypted space. Result is an `ebool` handle. Anyone calls `useDecryptPublicValues()` → gets cleartext + Zama KMS proof → submits `publishChallengeResult(bool, abiEncoded, proof)` → `FHE.checkSignatures()` verifies on-chain.
 
 **Spin** — bullet position is `FHE.randEuint8()` bounded to 1-6. `FHE.eq(bulletPos, chamberPtr)` produces an `ebool`. Same publicDecrypt → checkSignatures flow.
 
@@ -44,7 +44,7 @@ USDC:        0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238
 ## Stack
 
 - **Contracts**: Solidity + `@fhevm/solidity` (Zama fhEVM)
-- **Frontend**: Vite + React + wagmi v2 + `fhevmjs`
+- **Frontend**: Vite + React + wagmi v2 + `@zama-fhe/react-sdk` + `@zama-fhe/sdk`
 - **Chain**: Ethereum Sepolia (chain ID 11155111)
 - **FHE**: Zama fhEVM — `makePubliclyDecryptable` + `publicDecrypt` + `checkSignatures`
 
@@ -88,8 +88,8 @@ liarsbar2/
 ├── frontend/
 │   ├── src/
 │   │   ├── pages/         # Landing, Lobby, GameRoom, Roadmap
-│   │   ├── hooks/         # useFhevm, useMyHand, useChallenge, useSpin
-│   │   ├── lib/           # fhevm.ts, contracts.ts, wagmi.ts
+│   │   ├── hooks/         # useMyHand, useChallenge, useSpin, useGameState
+│   │   ├── lib/           # contracts.ts, wagmi.ts, gas.ts
 │   │   └── stores/        # gameStore.ts
 └── ws-server/server.js    # WebSocket relay
 ```

@@ -34,7 +34,6 @@ interface GameStore {
   myHand: (number | null)[];
   playedCards: number[]; // indices of cards already played this round
   selectedCards: number[];
-  fhevmReady: boolean;
   lastClaimant: string;
   lastClaimCount: number;
   chamberPointer: number;
@@ -48,7 +47,6 @@ interface GameStore {
   setGameMode: (mode: 'basic' | 'devil' | 'chaos') => void;
   setMyCharacter: (idx: number) => void;
   setStakeAmount: (amount: bigint) => void;
-  setFhevmReady: (ready: boolean) => void;
   setMyHand: (hand: (number | null)[]) => void;
   toggleCard: (index: number) => void;
   clearSelection: () => void;
@@ -76,7 +74,6 @@ export const useGameStore = create<GameStore>((set) => ({
   myHand: [null, null, null, null, null],
   playedCards: [],
   selectedCards: [],
-  fhevmReady: false,
   lastClaimant: '',
   lastClaimCount: 0,
   chamberPointer: 0,
@@ -89,7 +86,6 @@ export const useGameStore = create<GameStore>((set) => ({
   setGameMode: (mode) => set({ gameMode: mode }),
   setMyCharacter: (idx) => set({ myCharacter: idx }),
   setStakeAmount: (amount) => set({ stakeAmount: amount }),
-  setFhevmReady: (ready) => set({ fhevmReady: ready }),
   setMyHand: (hand) => set({ myHand: hand }),
   toggleCard: (index) => set((s) => {
     if (s.playedCards.includes(index)) return s;

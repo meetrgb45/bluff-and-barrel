@@ -1,13 +1,14 @@
+import { useAccount } from 'wagmi';
 import { useGameStore } from '../../stores/gameStore';
 import { useMyHand } from '../../hooks/useMyHand';
 import { cardName, cardEmoji } from '../../lib/cardUtils';
 
 export default function CardHand() {
+  const { isConnected } = useAccount();
   const myHand = useGameStore((s) => s.myHand);
   const selectedCards = useGameStore((s) => s.selectedCards);
   const playedCards = useGameStore((s) => s.playedCards);
   const toggleCard = useGameStore((s) => s.toggleCard);
-  const fhevmReady = useGameStore((s) => s.fhevmReady);
   const { decryptHand } = useMyHand();
 
   const allNull = myHand.every((c) => c === null);
@@ -16,16 +17,16 @@ export default function CardHand() {
     <div className="bg-bar-panel rounded-xl p-6">
       <div className="flex justify-between items-center mb-3">
         <h3 className="text-sm text-gray-400">Your Hand</h3>
-        {fhevmReady && (
+        {isConnected && (
           <button onClick={decryptHand} className="text-xs text-bar-gold hover:underline">
             🔄 Decrypt
           </button>
         )}
       </div>
 
-      {!fhevmReady && <p className="text-center text-yellow-400 text-sm animate-pulse">Waiting for encryption init...</p>}
+      {!isConnected && <p className="text-center text-yellow-400 text-sm animate-pulse">Waiting for encryption init...</p>}
 
-      {fhevmReady && allNull && (
+      {isConnected && allNull && (
         <div className="text-center">
           <button onClick={decryptHand} className="px-4 py-2 bg-bar-gold text-black rounded-lg font-bold text-sm">
             🔓 Reveal Cards

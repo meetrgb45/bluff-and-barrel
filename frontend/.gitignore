@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Zama fhEVM SDK web worker / WASM artifacts
+*.wasm
+*.wasm.map

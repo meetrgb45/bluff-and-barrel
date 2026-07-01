@@ -11,17 +11,16 @@ function getDeckContract(mode: string) {
 }
 
 export function useMyHand() {
-  const { address } = useAccount();
+  const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
   const sdk = useZamaSDK();
   const gameId = useGameStore((s) => s.gameId);
   const gameMode = useGameStore((s) => s.gameMode);
   const round = useGameStore((s) => s.round);
   const setMyHand = useGameStore((s) => s.setMyHand);
-  const fhevmReady = useGameStore((s) => s.fhevmReady);
 
   const decryptHand = useCallback(async () => {
-    if (!address || !publicClient || gameId === null || !fhevmReady) return;
+    if (!address || !publicClient || gameId === null || !isConnected) return;
 
     const deckGameId = BigInt(gameId) * 100n + BigInt(round);
     const { address: deckAddr, abi: deckAbi } = getDeckContract(gameMode);
@@ -59,7 +58,7 @@ export function useMyHand() {
     } catch (e) {
       console.error('[useMyHand] decrypt error:', e);
     }
-  }, [address, publicClient, sdk, gameId, gameMode, round, fhevmReady, setMyHand]);
+  }, [address, publicClient, sdk, gameId, gameMode, round, isConnected, setMyHand]);
 
   return { decryptHand };
 }
