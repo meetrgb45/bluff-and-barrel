@@ -26,3 +26,6 @@ dist-ssr
 # Zama fhEVM SDK web worker / WASM artifacts
 *.wasm
 *.wasm.map
+
+# Generated ABI files (run `npm run copy-abis` in contracts/ to regenerate)
+src/lib/abis/

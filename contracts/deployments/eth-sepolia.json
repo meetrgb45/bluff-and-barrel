@@ -3,9 +3,9 @@
   "chainId": 11155111,
   "deployer": "0x3Ba01A7992ecB412709F945D633577f116E85250",
   "contracts": {
-    "LiarsBarRevolver":  "0x4A815ecf4F76d64D7972827F76b42f97051b3910",
-    "LiarsBarDeck":      "0x0A2732A99d157f255F1ae471f7F229466c0118B0",
-    "LiarsBarGame":      "0xF25Dd58FbA7137d6C304a727989C7E644eB2Fd35",
+    "LiarsBarRevolver":  "0xA3420AaC92888b2f8ee69af03c0943c2A0746192",
+    "LiarsBarDeck":      "0x26EaacD58C550562A15F8849D77952Fe4B90AdA3",
+    "LiarsBarGame":      "0x6095B5f82E4C2c7a1462c58830E26380f52Ae2da",
     "LiarsBarDevilDeck": "0x4cD88c69d6cb0C7CDE8aF9c43f1035Fcc7E74818",
     "LiarsBarDevilGame": "0x85bcE43026505DC48185C1e07E200BEa11667442",
     "LiarsBarChaosDeck": "0x0b1dBC98A1c8a77d031e689eCa606CB342D6ab11",
@@ -14,5 +14,5 @@
   },
   "deployedAt": "2026-07-01",
   "fhe": "Zama fhEVM — @fhevm/solidity ^0.11.1",
-  "notes": "Basic mode redeployed with per-player dealing (HCU fix). Devil/Chaos still on old addresses pending redeploy."
+  "notes": "Basic mode redeployed: removed on-chain card reveal (publishCardReveal, revealHandles, revealedCards), packed Game struct (uint8[3] lastPlayedIndices, bool pendingIsDoubleSpin moved), removed chamberPointer polling. Devil/Chaos on old addresses pending redeploy."
 }

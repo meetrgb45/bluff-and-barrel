@@ -99,14 +99,20 @@ export const useGameStore = create<GameStore>((set) => ({
   clearSelection: () => set({ selectedCards: [] }),
   markCardsPlayed: (indices) => set((s) => ({ playedCards: [...s.playedCards, ...indices], selectedCards: [] })),
   resetPlayedCards: () => set((s) => ({ playedCards: [], selectedCards: [], myHand: Array(s.gameMode === 'chaos' ? 3 : 5).fill(null), revealedCards: [] })),
-  updateFromChain: (data) => set((s) => ({
-    state: getStateMap(s.gameMode)[Number(data.state)] ?? 'WaitingForPlayers',
-    round: data.round,
-    targetCard: data.targetCard,
-    currentTurnIndex: data.currentTurnIndex,
-    aliveCount: data.aliveCount,
-    winner: data.winner,
-  })),
+  updateFromChain: (data) => set((s) => {
+    const newState = getStateMap(s.gameMode)[Number(data.state)] ?? 'WaitingForPlayers';
+    const clearReveal = newState === 'PlayerTurn' || newState === 'Dealing';
+    return {
+      state: newState,
+      round: data.round,
+      targetCard: data.targetCard,
+      currentTurnIndex: data.currentTurnIndex,
+      aliveCount: data.aliveCount,
+      winner: data.winner,
+      // Clear stale revealed cards whenever we enter a non-challenge/spin state
+      ...(clearReveal ? { revealedCards: [] } : {}),
+    };
+  }),
   setPlayers: (players) => set({ players }),
   setLastClaim: (claimant, count) => set({ lastClaimant: claimant, lastClaimCount: count }),
   setChamberPointer: (ptr) => set({ chamberPointer: ptr }),

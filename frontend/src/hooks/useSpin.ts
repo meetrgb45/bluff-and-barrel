@@ -14,19 +14,20 @@ function getContracts(mode: string) {
 }
 
 export function useSpin() {
-  const { isConnected } = useAccount();
+  const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
   const gameId = useGameStore((s) => s.gameId);
   const gameMode = useGameStore((s) => s.gameMode);
+  const pendingSpinner = useGameStore((s) => s.pendingSpinner);
   const [spinning, setSpinning] = useState(false);
   const [outcome, setOutcome] = useState<SpinOutcome>(null);
 
-  // useDecryptPublicValues: mutation hook for publicly decryptable FHE values.
-  // No wallet signature needed — the contract marks spin results makePubliclyDecryptable().
   const decryptPublicValues = useDecryptPublicValues();
 
-  const isMySpinTurn = false; // determined by game state in GameRoom
+  // I need to pull the trigger if I am the pendingSpinner
+  const isMySpinTurn = !!(address && pendingSpinner &&
+    pendingSpinner.toLowerCase() === address.toLowerCase());
 
   const resolveSpin = useCallback(async () => {
     if (!publicClient || gameId === null || !isConnected || spinning) return;

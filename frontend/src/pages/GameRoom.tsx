@@ -97,24 +97,25 @@ export default function GameRoom() {
     }
   }, [round, resetPlayedCards]);
 
-  // Auto-decrypt: keep trying until hand is decrypted
+  // Auto-decrypt: trigger when we reach PlayerTurn (dealing is fully done by then)
+  // Also allow retry if state is Challenging/Spinning but hand still null (missed event)
   useEffect(() => {
     if (!fhevmReady || !myPlayer?.alive || round === 0) return;
-    if (state !== 'PlayerTurn' && state !== 'Challenging' && state !== 'Spinning') return;
+    if (state !== 'PlayerTurn') return;
     if (handDecryptedRef.current === round) return;
 
     handDecryptedRef.current = round;
-    const attempt = () => setTimeout(decryptHand, 3000);
-    attempt();
+    // Small delay to let Zama relayer index the newly dealt cards
+    const attempt = setTimeout(decryptHand, 4000);
 
-    // Retry after 15s if still null
+    // Retry after 20s if still null
     const retry = setTimeout(() => {
       const hand = useGameStore.getState().myHand;
       if (hand.every(c => c === null)) {
-        handDecryptedRef.current = 0; // allow re-trigger
+        handDecryptedRef.current = 0; // allow re-trigger next render
       }
-    }, 18000);
-    return () => clearTimeout(retry);
+    }, 24000);
+    return () => { clearTimeout(attempt); clearTimeout(retry); };
   }, [fhevmReady, state, round, decryptHand, myPlayer?.alive]);
 
   const iAmChallenger = players[currentTurnIndex]?.addr?.toLowerCase() === address?.toLowerCase();

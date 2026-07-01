@@ -5,6 +5,8 @@
   "type": "commonjs",
   "scripts": {
     "compile": "hardhat compile",
+    "copy-abis": "node scripts/copy-abis.js",
+    "build": "hardhat compile && node scripts/copy-abis.js",
     "test": "REPORT_GAS=true hardhat test",
     "deploy:local": "hardhat run scripts/deploy.ts --network hardhat",
     "deploy:arb-sepolia": "hardhat run scripts/deploy.ts --network arb-sepolia",

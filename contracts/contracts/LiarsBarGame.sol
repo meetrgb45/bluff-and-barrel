@@ -32,14 +32,15 @@ contract LiarsBarGame is ZamaEthereumConfig, ILiarsBarGame {
         uint8 targetCard;
         uint8 currentTurnIndex;
         uint8 aliveCount;
+        bool pendingIsDoubleSpin;   // packed with uint8s above — saves a slot
         Player[4] players;
         address lastClaimant;
         uint8 lastClaimCount;
-        uint8[] lastPlayedIndices;
-        bytes32 pendingChallengeHandle; // Zama: handle to ebool result
-        bytes32 pendingSpinHandle;      // Zama: handle to ebool fired result
+        uint8[3] lastPlayedIndices; // fixed-size: max 3 cards played at once
+        uint8 lastPlayedCount;      // how many indices are valid this turn
+        bytes32 pendingChallengeHandle;
+        bytes32 pendingSpinHandle;
         address pendingSpinner;
-        bool pendingIsDoubleSpin;
         address winner;
         uint256 turnDeadline;
         uint256 stakeAmount;
@@ -50,13 +51,6 @@ contract LiarsBarGame is ZamaEthereumConfig, ILiarsBarGame {
 
     mapping(uint256 => Game) public games;
     uint256 public nextGameId;
-
-    // Card reveal handles for frontend
-    mapping(uint256 => bytes32[]) public revealHandles;
-    // Revealed card values (set after checkSignatures)
-    mapping(uint256 => uint8[]) public revealedCards;
-
-    event CardsRevealed(uint256 indexed gameId, uint8[] cardValues, bool wasLie);
 
     LiarsBarDeck public deck;
     LiarsBarRevolver public revolver;
@@ -117,7 +111,8 @@ contract LiarsBarGame is ZamaEthereumConfig, ILiarsBarGame {
         deck.markCardsPlayed(gameId * 100 + g.round, msg.sender, cardIndices);
         g.lastClaimant = msg.sender;
         g.lastClaimCount = uint8(cardIndices.length);
-        g.lastPlayedIndices = cardIndices;
+        g.lastPlayedCount = uint8(cardIndices.length);
+        for (uint8 i = 0; i < cardIndices.length; i++) g.lastPlayedIndices[i] = cardIndices[i];
         _addPoints(gameId, _playerIndex(gameId, msg.sender), uint8(cardIndices.length));
         emit CardsPlayed(gameId, msg.sender, uint8(cardIndices.length));
         _advanceTurn(gameId);
@@ -133,14 +128,12 @@ contract LiarsBarGame is ZamaEthereumConfig, ILiarsBarGame {
         g.state = GameState.Challenging;
         g.turnDeadline = block.timestamp + TURN_TIMEOUT;
 
-        // Reveal cards for spectators
-        bytes32[] memory handles = deck.revealCards(gameId * 100 + g.round, g.lastClaimant, g.lastPlayedIndices);
-        revealHandles[gameId] = handles;
-        delete revealedCards[gameId];
+        // Build indices slice from fixed array
+        uint8[] memory indices = new uint8[](g.lastPlayedCount);
+        for (uint8 i = 0; i < g.lastPlayedCount; i++) indices[i] = g.lastPlayedIndices[i];
 
-        // Compute challenge result (stays encrypted until checkSignatures)
-        bytes32 challengeHandle = deck.verifyClaim(gameId * 100 + g.round, g.lastClaimant, g.lastPlayedIndices, g.targetCard);
-        // Mark it publicly decryptable so anyone can request decryption
+        // Compute challenge result encrypted — no card reveal on-chain
+        bytes32 challengeHandle = deck.verifyClaim(gameId * 100 + g.round, g.lastClaimant, indices, g.targetCard);
         FHE.makePubliclyDecryptable(ebool.wrap(challengeHandle));
         g.pendingChallengeHandle = challengeHandle;
 
@@ -245,29 +238,6 @@ contract LiarsBarGame is ZamaEthereumConfig, ILiarsBarGame {
         }
     }
 
-    /**
-     * @notice Publish card reveal results after off-chain publicDecrypt.
-     */
-    function publishCardReveal(
-        uint256 gameId,
-        uint8[] calldata cardValues,
-        bytes calldata abiEncodedClearValues,
-        bytes calldata decryptionProof
-    ) external {
-        Game storage g = games[gameId];
-        bytes32[] memory handles = revealHandles[gameId];
-        require(handles.length == cardValues.length, "Length mismatch");
-
-        FHE.checkSignatures(handles, abiEncodedClearValues, decryptionProof);
-
-        bool wasLie = false;
-        for (uint256 i = 0; i < cardValues.length; i++) {
-            if (cardValues[i] != g.targetCard && cardValues[i] != 3) wasLie = true;
-        }
-        revealedCards[gameId] = cardValues;
-        emit CardsRevealed(gameId, cardValues, wasLie);
-    }
-
     function useDoubleSpin(uint256 gameId) external {
         Game storage g = games[gameId];
         if (g.state != GameState.Spinning) revert NotInCorrectPhase();
@@ -341,8 +311,6 @@ contract LiarsBarGame is ZamaEthereumConfig, ILiarsBarGame {
     function getStakeAmount(uint256 gameId) external view returns (uint256) { return games[gameId].stakeAmount; }
     function getPendingChallengeHandle(uint256 gameId) external view returns (bytes32) { return games[gameId].pendingChallengeHandle; }
     function getPendingSpinHandle(uint256 gameId) external view returns (bytes32) { return games[gameId].pendingSpinHandle; }
-    function getRevealHandles(uint256 gameId) external view returns (bytes32[] memory) { return revealHandles[gameId]; }
-    function getRevealedCards(uint256 gameId) external view returns (uint8[] memory) { return revealedCards[gameId]; }
 
     // ─── Internal ─────────────────────────────────────────────────────────
 
@@ -357,7 +325,7 @@ contract LiarsBarGame is ZamaEthereumConfig, ILiarsBarGame {
         deck.initDeal(gameId * 100 + g.round, dealTo);
         g.lastClaimant = address(0);
         g.lastClaimCount = 0;
-        delete g.lastPlayedIndices;
+        g.lastPlayedCount = 0;
         g.pendingSpinner = address(0);
         g.pendingIsDoubleSpin = false;
         g.currentTurnIndex = _nextAliveIndex(g, type(uint8).max);
