@@ -1,0 +1,35 @@
+{
+  "name": "liars-bar-contracts",
+  "version": "1.0.0",
+  "description": "Full Liar's Bar on Fhenix CoFHE — 4-player elimination card bluffing with FHE-encrypted deck & revolver",
+  "type": "commonjs",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "REPORT_GAS=true hardhat test",
+    "deploy:local": "hardhat run scripts/deploy.ts --network hardhat",
+    "deploy:arb-sepolia": "hardhat run scripts/deploy.ts --network arb-sepolia",
+    "clean": "rimraf ./artifacts ./cache ./typechain-types"
+  },
+  "devDependencies": {
+    "@cofhe/hardhat-plugin": "^0.5.1",
+    "@cofhe/mock-contracts": "^0.5.1",
+    "@cofhe/sdk": "^0.5.1",
+    "@fhenixprotocol/cofhe-contracts": "^0.1.3",
+    "@nomicfoundation/hardhat-chai-matchers": "^2.0.0",
+    "@nomicfoundation/hardhat-ethers": "^3.0.0",
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.0",
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@types/chai": "^4.2.0",
+    "@types/mocha": ">=9.1.0",
+    "@types/node": ">=18.0.0",
+    "chai": "^4.2.0",
+    "dotenv": "^16.4.7",
+    "ethers": "^6.4.0",
+    "hardhat": "^2.22.19",
+    "ts-node": ">=8.0.0",
+    "typescript": ">=4.5.0"
+  },
+  "dependencies": {
+    "@fhevm/solidity": "^0.11.1"
+  }
+}
