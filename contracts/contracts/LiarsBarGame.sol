@@ -352,16 +352,36 @@ contract LiarsBarGame is ZamaEthereumConfig, ILiarsBarGame {
         g.targetCard = uint8(uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, gameId, g.round))) % 3);
         address[4] memory dealTo;
         for (uint8 i = 0; i < 4; i++) dealTo[i] = g.players[i].alive ? g.players[i].addr : address(0);
-        deck.dealAllHands(gameId * 100 + g.round, dealTo);
+        // initDeal deals player 0 and stores pool state on-chain.
+        // Remaining players are dealt via dealNextPlayer() (3 separate txs).
+        deck.initDeal(gameId * 100 + g.round, dealTo);
         g.lastClaimant = address(0);
         g.lastClaimCount = 0;
         delete g.lastPlayedIndices;
         g.pendingSpinner = address(0);
         g.pendingIsDoubleSpin = false;
         g.currentTurnIndex = _nextAliveIndex(g, type(uint8).max);
-        g.state = GameState.PlayerTurn;
+        g.state = GameState.Dealing;
         g.turnDeadline = block.timestamp + TURN_TIMEOUT;
         emit RoundStarted(gameId, g.round, g.targetCard);
+    }
+
+    /**
+     * @notice Deal the next player's hand. Call 3 times after RoundStarted
+     *         to complete dealing for players 1, 2, 3.
+     *         Anyone (any participant) can call this.
+     *         Transitions to PlayerTurn when all players are dealt.
+     */
+    function dealNextPlayer(uint256 gameId) external {
+        Game storage g = games[gameId];
+        require(g.state == GameState.Dealing, "Not in Dealing state");
+        require(_isParticipant(gameId, msg.sender), "Not a participant");
+        uint256 rid = gameId * 100 + g.round;
+        bool done = deck.dealNextPlayer(rid);
+        if (done) {
+            g.state = GameState.PlayerTurn;
+            g.turnDeadline = block.timestamp + TURN_TIMEOUT;
+        }
     }
 
     function _triggerSpin(uint256 gameId) internal {

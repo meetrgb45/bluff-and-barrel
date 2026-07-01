@@ -1,6 +1,6 @@
-export const GAME_ADDRESS = (import.meta.env.VITE_GAME_ADDRESS || '0x3D21D902cBda4E73340efa51B77C867aC0a5De56') as `0x${string}`;
-export const DECK_ADDRESS = (import.meta.env.VITE_DECK_ADDRESS || '0x5CAD2D5cB6f763165479B62f4c488aD452562733') as `0x${string}`;
-export const REVOLVER_ADDRESS = (import.meta.env.VITE_REVOLVER_ADDRESS || '0x8cF69A0212Cc0eD9E271d64e42C10e0EDF109e2C') as `0x${string}`;
+export const GAME_ADDRESS = (import.meta.env.VITE_GAME_ADDRESS || '0xF25Dd58FbA7137d6C304a727989C7E644eB2Fd35') as `0x${string}`;
+export const DECK_ADDRESS = (import.meta.env.VITE_DECK_ADDRESS || '0x0A2732A99d157f255F1ae471f7F229466c0118B0') as `0x${string}`;
+export const REVOLVER_ADDRESS = (import.meta.env.VITE_REVOLVER_ADDRESS || '0x4A815ecf4F76d64D7972827F76b42f97051b3910') as `0x${string}`;
 export const DEVIL_GAME_ADDRESS = (import.meta.env.VITE_DEVIL_GAME_ADDRESS || '0x85bcE43026505DC48185C1e07E200BEa11667442') as `0x${string}`;
 export const DEVIL_DECK_ADDRESS = (import.meta.env.VITE_DEVIL_DECK_ADDRESS || '0x4cD88c69d6cb0C7CDE8aF9c43f1035Fcc7E74818') as `0x${string}`;
 export const CHAOS_GAME_ADDRESS = (import.meta.env.VITE_CHAOS_GAME_ADDRESS || '0x3C7b6B93E8fc5891A55AE683eD37A465Dc49cFDb') as `0x${string}`;
@@ -17,7 +17,7 @@ const BASE_GAME_ABI = [
   { type: 'function', name: 'publishCardReveal', inputs: [{ name: 'gameId', type: 'uint256' }, { name: 'cardValues', type: 'uint8[]' }, { name: 'abiEncoded', type: 'bytes' }, { name: 'proof', type: 'bytes' }], outputs: [], stateMutability: 'nonpayable' },
   { type: 'function', name: 'publishSpinResult', inputs: [{ name: 'gameId', type: 'uint256' }, { name: 'fired', type: 'bool' }, { name: 'abiEncoded', type: 'bytes' }, { name: 'proof', type: 'bytes' }], outputs: [], stateMutability: 'nonpayable' },
   { type: 'function', name: 'forceTimeout', inputs: [{ name: 'gameId', type: 'uint256' }], outputs: [], stateMutability: 'nonpayable' },
-  { type: 'function', name: 'dealNextRound', inputs: [{ name: 'gameId', type: 'uint256' }], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'dealNextPlayer', inputs: [{ name: 'gameId', type: 'uint256' }], outputs: [], stateMutability: 'nonpayable' },
   { type: 'function', name: 'nextGameId', inputs: [], outputs: [{ type: 'uint256' }], stateMutability: 'view' },
   { type: 'function', name: 'getGameState', inputs: [{ name: 'gameId', type: 'uint256' }], outputs: [{ name: 'state', type: 'uint8' }, { name: 'round', type: 'uint8' }, { name: 'targetCard', type: 'uint8' }, { name: 'currentTurnIndex', type: 'uint8' }, { name: 'aliveCount', type: 'uint8' }, { name: 'winner', type: 'address' }], stateMutability: 'view' },
   { type: 'function', name: 'getPlayer', inputs: [{ name: 'gameId', type: 'uint256' }, { name: 'index', type: 'uint8' }], outputs: [{ name: 'addr', type: 'address' }, { name: 'alive', type: 'bool' }, { name: 'points', type: 'uint8' }, { name: 'usedExecute', type: 'bool' }, { name: 'usedDoubleSpin', type: 'bool' }, { name: 'characterId', type: 'uint8' }], stateMutability: 'view' },

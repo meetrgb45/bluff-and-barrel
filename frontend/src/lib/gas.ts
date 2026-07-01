@@ -1,20 +1,11 @@
-import type { PublicClient } from 'viem';
+// Zama fhEVM on Ethereum Sepolia uses standard EVM gas estimation.
+// Do NOT pass manual gas overrides — the Zama RPC rejects transactions
+// where the estimated gas limit exceeds its HCU (Homomorphic Computation Unit) cap.
+// Let wagmi/MetaMask estimate gas naturally for all FHE operations.
 
-// Eth Sepolia has standard gas estimation — no explicit limits needed.
-// Just ensure maxFeePerGas is above current baseFee.
-export async function gasFor(_fn: string, publicClient?: PublicClient): Promise<Record<string, bigint>> {
-  if (!publicClient) return {};
-  try {
-    const block = await publicClient.getBlock();
-    const baseFee = block.baseFeePerGas ?? 2_000_000_000n;
-    return {
-      maxFeePerGas: baseFee * 2n,
-      maxPriorityFeePerGas: 1_000_000_000n, // 1 gwei tip
-    };
-  } catch {
-    return {};
-  }
+export async function gasFor(_fn?: string, _publicClient?: unknown): Promise<Record<string, never>> {
+  return {};
 }
 
-export async function getGasOverrides(publicClient?: PublicClient) { return gasFor('', publicClient); }
-export const getHeavyGasOverrides = getGasOverrides;
+export const getGasOverrides = gasFor;
+export const getHeavyGasOverrides = gasFor;

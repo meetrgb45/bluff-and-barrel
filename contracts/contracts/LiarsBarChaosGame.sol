@@ -249,18 +249,19 @@ contract LiarsBarChaosGame is ZamaEthereumConfig {
         } else if (g.state == GameState.Targeting) _eliminatePlayer(gameId, g.shooter);
     }
 
-    function dealNextRound(uint256 gameId) external {
+    function dealNextPlayer(uint256 gameId) external {
         Game storage g = games[gameId];
         require(g.state == GameState.Dealing, "Not dealing");
         bool ok = false;
         for (uint8 i = 0; i < 4; i++) if (g.players[i].addr == msg.sender) { ok = true; break; }
         require(ok, "Not participant");
-        address[4] memory dealTo;
-        for (uint8 i = 0; i < 4; i++) dealTo[i] = g.players[i].alive ? g.players[i].addr : address(0);
-        deck.dealAllHands(gameId * 100 + g.round, dealTo);
-        g.currentTurnIndex = _nextAliveIndex(g, type(uint8).max);
-        g.state = GameState.PlayerTurn; g.turnDeadline = block.timestamp + TURN_TIMEOUT;
-        emit RoundStarted(gameId, g.round, g.targetCard);
+        uint256 rid = gameId * 100 + g.round;
+        bool done = deck.dealNextPlayer(rid);
+        if (done) {
+            g.currentTurnIndex = _nextAliveIndex(g, type(uint8).max);
+            g.state = GameState.PlayerTurn;
+            g.turnDeadline = block.timestamp + TURN_TIMEOUT;
+        }
     }
 
     // ─── View ──────────────────────────────────────────────────────────────
@@ -288,7 +289,12 @@ contract LiarsBarChaosGame is ZamaEthereumConfig {
         g.lastClaimant = address(0); g.lastPlayedIndex = 0;
         g.shooter = address(0); delete g.multiShooters; g.targetsChosen = 0; g.shotsResolved = 0;
         g.cardRevealed = false;
+        address[4] memory dealTo;
+        for (uint8 i = 0; i < 4; i++) dealTo[i] = g.players[i].alive ? g.players[i].addr : address(0);
+        deck.initDeal(gameId * 100 + g.round, dealTo);
+        g.currentTurnIndex = _nextAliveIndex(g, type(uint8).max);
         g.state = GameState.Dealing; g.turnDeadline = block.timestamp + TURN_TIMEOUT;
+        emit RoundStarted(gameId, g.round, g.targetCard);
     }
     function _eliminatePlayer(uint256 gameId, address player) internal {
         _eliminatePlayerNoRound(gameId, player);

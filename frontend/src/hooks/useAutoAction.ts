@@ -5,8 +5,10 @@ import {
   GAME_ADDRESS, GAME_ABI,
   DEVIL_GAME_ADDRESS, DEVIL_GAME_ABI,
   CHAOS_GAME_ADDRESS, CHAOS_GAME_ABI,
+  DECK_ADDRESS, DECK_ABI,
+  DEVIL_DECK_ADDRESS, DEVIL_DECK_ABI,
+  CHAOS_DECK_ADDRESS, CHAOS_DECK_ABI,
 } from '../lib/contracts';
-import { getGasOverrides } from '../lib/gas';
 
 function getContracts(mode: string) {
   if (mode === 'devil') return { address: DEVIL_GAME_ADDRESS, abi: DEVIL_GAME_ABI };
@@ -14,11 +16,20 @@ function getContracts(mode: string) {
   return { address: GAME_ADDRESS, abi: GAME_ABI };
 }
 
+function getDeckContracts(mode: string) {
+  if (mode === 'devil') return { address: DEVIL_DECK_ADDRESS, abi: DEVIL_DECK_ABI };
+  if (mode === 'chaos') return { address: CHAOS_DECK_ADDRESS, abi: CHAOS_DECK_ABI };
+  return { address: DECK_ADDRESS, abi: DECK_ABI };
+}
+
 /**
- * Auto-acts when the turn timer expires:
- * - PlayerTurn (my turn): auto-play first unplayed card
- * - Challenging (I'm challenger): auto-resolve is already handled
- * - Spinning (I'm spinner): auto-pull trigger
+ * Handles two auto-action scenarios:
+ *
+ * 1. DEALING state — sequentially calls dealNextPlayer until all players
+ *    are dealt (3 calls after initDeal). Any participant can drive this.
+ *    First player to detect Dealing state drives it; others skip if already in progress.
+ *
+ * 2. PlayerTurn timeout — auto-play first unplayed card after 55s.
  */
 export function useAutoAction() {
   const { address } = useAccount();
@@ -27,6 +38,7 @@ export function useAutoAction() {
   const gameId = useGameStore((s) => s.gameId);
   const gameMode = useGameStore((s) => s.gameMode);
   const state = useGameStore((s) => s.state);
+  const round = useGameStore((s) => s.round);
   const players = useGameStore((s) => s.players);
   const currentTurnIndex = useGameStore((s) => s.currentTurnIndex);
   const playedCards = useGameStore((s) => s.playedCards);
@@ -34,16 +46,86 @@ export function useAutoAction() {
   const markCardsPlayed = useGameStore((s) => s.markCardsPlayed);
   const autoActedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dealingRef = useRef(false);
 
   const isMyTurn = players[currentTurnIndex]?.addr?.toLowerCase() === address?.toLowerCase();
+  const isParticipant = players.some(p => p.addr?.toLowerCase() === address?.toLowerCase());
 
-  // Reset auto-acted flag when turn/state changes
+  // Reset flags on state/turn change
   useEffect(() => {
     autoActedRef.current = false;
     if (timerRef.current) clearTimeout(timerRef.current);
   }, [state, currentTurnIndex]);
 
-  // Set 30s timer for auto-action on MY turn
+  // ─── Dealing state: drive dealNextPlayer calls ────────────────────────
+  useEffect(() => {
+    if (state !== 'Dealing') { dealingRef.current = false; return; }
+    if (!publicClient || gameId === null || !address || !isParticipant) return;
+    if (dealingRef.current) return; // another effect instance already driving it
+
+    dealingRef.current = true;
+
+    const driveDealing = async () => {
+      const { address: gameAddr, abi } = getContracts(gameMode);
+      const { address: deckAddr, abi: deckAbi } = getDeckContracts(gameMode);
+      const rid = BigInt(gameId) * 100n + BigInt(round);
+
+      // Check how many players still need dealing
+      for (let i = 0; i < 3; i++) {
+        // Re-check state before each call — another player may have advanced it
+        const currentState = useGameStore.getState().state;
+        if (currentState !== 'Dealing') break;
+
+        try {
+          // Check on-chain deal state to avoid double-dealing
+          const [nextPlayerIndex, active] = await publicClient.readContract({
+            address: deckAddr, abi: deckAbi,
+            functionName: 'getDealState',
+            args: [rid],
+          }) as [number, boolean];
+
+          if (!active) break; // all dealt
+
+          // Only call if next player matches expected index (avoid race conditions)
+          if (Number(nextPlayerIndex) <= i) {
+            // Already dealt this player, skip
+            continue;
+          }
+
+          await writeContractAsync({
+            address: gameAddr, abi,
+            functionName: 'dealNextPlayer',
+            args: [BigInt(gameId)],
+          });
+
+          // Small delay between txs to let chain process
+          await new Promise(r => setTimeout(r, 1500));
+        } catch (e: any) {
+          if (/User rejected|denied/i.test(e?.message || '')) break;
+          console.warn(`[autoAction] dealNextPlayer attempt ${i + 1} failed:`, e?.message);
+          // Wait and retry once
+          await new Promise(r => setTimeout(r, 3000));
+          try {
+            const currentState = useGameStore.getState().state;
+            if (currentState !== 'Dealing') break;
+            await writeContractAsync({
+              address: gameAddr, abi,
+              functionName: 'dealNextPlayer',
+              args: [BigInt(gameId)],
+            });
+            await new Promise(r => setTimeout(r, 1500));
+          } catch {
+            break;
+          }
+        }
+      }
+      dealingRef.current = false;
+    };
+
+    driveDealing();
+  }, [state, gameId, gameMode, round, address, isParticipant, publicClient, writeContractAsync]);
+
+  // ─── PlayerTurn timeout: auto-play after 55s ──────────────────────────
   useEffect(() => {
     if (!publicClient || gameId === null || !address) return;
     if (state !== 'PlayerTurn' || !isMyTurn) return;
@@ -54,34 +136,35 @@ export function useAutoAction() {
       autoActedRef.current = true;
 
       try {
-        const gas = await getGasOverrides(publicClient);
         const { address: gameAddr, abi } = getContracts(gameMode);
-        // Read fresh state to avoid stale closure
         const freshState = useGameStore.getState();
         const freshPlayedCards = freshState.playedCards;
         const freshLastClaimant = freshState.lastClaimant;
-        const hasClaimToChallenge = freshLastClaimant && freshLastClaimant !== '0x0000000000000000000000000000000000000000' && freshLastClaimant.toLowerCase() !== address.toLowerCase();
+        const hasClaimToChallenge = freshLastClaimant &&
+          freshLastClaimant !== '0x0000000000000000000000000000000000000000' &&
+          freshLastClaimant.toLowerCase() !== address.toLowerCase();
 
         const maxCards = gameMode === 'chaos' ? 3 : 5;
-        const unplayedIndex = Array.from({ length: maxCards }, (_, i) => i).find((i) => !freshPlayedCards.includes(i));
+        const unplayedIndex = Array.from({ length: maxCards }, (_, i) => i)
+          .find((i) => !freshPlayedCards.includes(i));
 
         if (unplayedIndex !== undefined) {
           console.log('[autoAction] timer expired, auto-playing card', unplayedIndex);
           if (gameMode === 'chaos') {
-            await writeContractAsync({ address: gameAddr, abi, functionName: 'playCard', args: [BigInt(gameId), unplayedIndex], ...gas });
+            await writeContractAsync({ address: gameAddr, abi, functionName: 'playCard', args: [BigInt(gameId), unplayedIndex] });
           } else {
-            await writeContractAsync({ address: gameAddr, abi, functionName: 'playCards', args: [BigInt(gameId), [unplayedIndex]], ...gas });
+            await writeContractAsync({ address: gameAddr, abi, functionName: 'playCards', args: [BigInt(gameId), [unplayedIndex]] });
           }
           markCardsPlayed([unplayedIndex]);
         } else if (hasClaimToChallenge) {
           console.log('[autoAction] timer expired, auto-calling liar');
-          await writeContractAsync({ address: gameAddr, abi, functionName: 'callLiar', args: [BigInt(gameId)], ...gas });
+          await writeContractAsync({ address: gameAddr, abi, functionName: 'callLiar', args: [BigInt(gameId)] });
         }
       } catch (e) {
         console.error('[autoAction] failed:', e);
       }
-    }, 55000); // 55 seconds (contract has 30s but we give extra time for decrypt)
+    }, 55000);
 
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [state, isMyTurn, gameId, address, publicClient, writeContractAsync, playedCards, lastClaimant, markCardsPlayed]);
+  }, [state, isMyTurn, gameId, address, publicClient, writeContractAsync, playedCards, lastClaimant, markCardsPlayed, gameMode]);
 }
