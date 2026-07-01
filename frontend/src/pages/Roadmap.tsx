@@ -32,7 +32,7 @@ const phases = [
     status: 'upcoming',
     img: '/nft-characters.png',
     desc: 'Your mask, your identity. Mint exclusive characters. Holders get reduced fees and access to premium tables.',
-    items: ['20+ unique characters', 'Reduced platform fees', 'Exclusive tables', 'ERC-721 on Arbitrum'],
+    items: ['20+ unique characters', 'Reduced platform fees', 'Exclusive tables', 'ERC-721 on Ethereum'],
   },
   {
     date: 'End of September 2026',

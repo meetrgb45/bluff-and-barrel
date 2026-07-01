@@ -34,11 +34,11 @@ export default function GameRoom() {
   const mode = (modeParam || 'basic') as GameMode;
   const { address: gameContractAddress, abi: gameAbi } = getModeConfig(mode);
   const navigate = useNavigate();
-  const { address } = useAccount();
+  const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
-  useFhevm();
-  const fhevmReady = useGameStore((s) => s.fhevmReady);
+  // fhevmReady = wallet is connected and ZamaProvider (in App.tsx) is active
+  const fhevmReady = isConnected;
   const setGameId = useGameStore((s) => s.setGameId);
   const setGameMode = useGameStore((s) => s.setGameMode);
   const stakeAmount = useGameStore((s) => s.stakeAmount);
@@ -517,7 +517,7 @@ export default function GameRoom() {
                 const winnerP = players.find(p => p.alive && p.addr !== '0x0000000000000000000000000000000000000000');
                 const winnerName = winnerP ? CHARACTERS[winnerP.characterId % CHARACTERS.length].name : 'Unknown';
                 const pot = stakeAmount > 0n ? `${Number(stakeAmount * 4n) / 1e6} USDC` : 'bragging rights';
-                const text = `I just played Bluff and Barrel! ${winnerName} won ${pot} in ${mode} mode. On-chain deception powered by @FhenixIO FHE.`;
+                const text = `I just played Bluff and Barrel! ${winnerName} won ${pot} in ${mode} mode. On-chain deception powered by @zama_fhe fhEVM.`;
                 window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(window.location.origin)}`, '_blank');
               }}>Share on X</button>
             </div>

@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useAccount, usePublicClient, useWriteContract } from 'wagmi';
-import { getInstance } from '../lib/fhevm';
+import { useDecryptPublicValues } from '@zama-fhe/react-sdk';
 import { GAME_ADDRESS, GAME_ABI, DEVIL_GAME_ADDRESS, DEVIL_GAME_ABI, CHAOS_GAME_ADDRESS, CHAOS_GAME_ABI } from '../lib/contracts';
 import { useGameStore } from '../stores/gameStore';
 import { gasFor } from '../lib/gas';
@@ -12,19 +12,20 @@ function getGameContract(mode: string) {
 }
 
 export function useChallenge() {
-  const { address } = usePublicClient() as any;
+  const { isConnected } = useAccount();
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
   const gameId = useGameStore((s) => s.gameId);
   const gameMode = useGameStore((s) => s.gameMode);
-  const fhevmReady = useGameStore((s) => s.fhevmReady);
   const setRevealedCards = useGameStore((s) => s.setRevealedCards);
   const [resolving, setResolving] = useState(false);
 
+  // useDecryptPublicValues: mutation hook for publicly decryptable FHE values.
+  // No wallet signature needed — values marked makePubliclyDecryptable() are open.
+  const decryptPublicValues = useDecryptPublicValues();
+
   const resolveChallenge = useCallback(async () => {
-    if (!publicClient || gameId === null || !fhevmReady || resolving) return;
-    const instance = getInstance();
-    if (!instance) return;
+    if (!publicClient || gameId === null || !isConnected || resolving) return;
 
     setResolving(true);
     const { address: contractAddr, abi } = getGameContract(gameMode);
@@ -38,12 +39,11 @@ export function useChallenge() {
           address: contractAddr, abi, functionName: 'getPendingChallengeHandle', args: [BigInt(gameId)],
         }) as `0x${string}`;
 
-        if (!challengeHandle || challengeHandle === '0x0000000000000000000000000000000000000000000000000000000000000000') {
-          setResolving(false); return;
-        }
+        const ZERO = '0x0000000000000000000000000000000000000000000000000000000000000000';
+        if (!challengeHandle || challengeHandle === ZERO) { setResolving(false); return; }
 
-        // Step 2: Off-chain public decrypt via Zama KMS
-        const results = await instance.publicDecrypt([challengeHandle]);
+        // Step 2: Public decrypt via @zama-fhe/react-sdk (no signature needed)
+        const results = await decryptPublicValues.mutateAsync([challengeHandle]);
         const allValid = Boolean(results.clearValues[challengeHandle]);
 
         // Step 3: Submit proof on-chain
@@ -54,14 +54,14 @@ export function useChallenge() {
           ...(await gasFor('publishChallengeResult', publicClient)),
         });
 
-        // Also decrypt and reveal cards
+        // Step 4: Also decrypt and reveal the played cards
         try {
           const revealHandles = await publicClient.readContract({
             address: contractAddr, abi, functionName: 'getRevealHandles', args: [BigInt(gameId)],
           }) as `0x${string}`[];
 
           if (revealHandles?.length) {
-            const cardResults = await instance.publicDecrypt(revealHandles);
+            const cardResults = await decryptPublicValues.mutateAsync(revealHandles);
             const cards = revealHandles.map(h => Number(cardResults.clearValues[h]));
             await writeContractAsync({
               address: contractAddr, abi,
@@ -81,7 +81,7 @@ export function useChallenge() {
       }
     }
     setResolving(false);
-  }, [publicClient, gameId, gameMode, fhevmReady, resolving, writeContractAsync, setRevealedCards]);
+  }, [publicClient, gameId, gameMode, isConnected, resolving, decryptPublicValues, writeContractAsync, setRevealedCards]);
 
   return { resolveChallenge, resolving };
 }

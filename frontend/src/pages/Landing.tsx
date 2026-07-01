@@ -41,7 +41,7 @@ export default function Landing() {
 
       {/* Nav */}
       <nav style={{ width: '100%', maxWidth: 1100, padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 40 }}>
-        <span style={{ fontSize: '0.75rem', color: '#8b7b5a', letterSpacing: '0.1em' }}>FHENIX ENCRYPTED</span>
+        <span style={{ fontSize: '0.75rem', color: '#8b7b5a', letterSpacing: '0.1em' }}>ZAMA ENCRYPTED</span>
         {isConnected ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
             <span style={{ fontSize: '0.75rem', color: '#c9a84c', fontFamily: 'monospace' }}>{shortenAddress(address!)}</span>
@@ -66,7 +66,7 @@ export default function Landing() {
           </div>
           <p style={{ fontSize: '1.3rem', color: '#dfd5b4', fontStyle: 'italic' }}>Bluff. Deceive. Survive.</p>
           <p style={{ fontSize: '0.85rem', color: '#8b7b5a', maxWidth: 550, margin: '1rem auto 0', lineHeight: 1.6 }}>
-            The first fully on-chain card bluffing game with Russian Roulette. Powered by Fhenix FHE — your secrets remain hidden until you choose to reveal them.
+            The first fully on-chain card bluffing game with Russian Roulette. Powered by Zama fhEVM — your secrets remain hidden until you choose to reveal them.
           </p>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', margin: '2rem 0' }}>
             <div style={{ height: 1, width: 50, background: 'linear-gradient(to right, transparent, #8b7b5a)' }} />
@@ -124,15 +124,16 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* Built on Fhenix */}
+        {/* Built on Zama fhEVM */}
         <section style={{ padding: '3rem 2rem', background: '#1a110d', borderRadius: '0.75rem', border: '1px solid rgba(184,115,51,0.2)', position: 'relative', overflow: 'hidden', marginBottom: '3rem', isolation: 'auto' }}>
-          <img src="/fhenix-logo.png" alt="" style={{ position: 'absolute', top: 10, right: 15, width: 150, opacity: 0.2, mixBlendMode: 'lighten' }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '1rem' }}>
-            <img src="/fhenix-logo.png" alt="Fhenix" style={{ width: 32, height: 32, mixBlendMode: 'lighten' }} />
-            <h2 style={{ fontSize: '1.5rem', color: '#c9a84c' }}>Built on Fhenix</h2>
+            <div style={{ width: 32, height: 32, background: 'linear-gradient(135deg, #c9a84c, #8a6420)', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontSize: '1rem' }}>🔐</span>
+            </div>
+            <h2 style={{ fontSize: '1.5rem', color: '#c9a84c' }}>Built on Zama fhEVM</h2>
           </div>
           <p style={{ color: '#8b7b5a', fontSize: '0.85rem', maxWidth: 600, lineHeight: 1.7, marginBottom: '2rem' }}>
-            Traditional on-chain games are limited by public state. Bluff and Barrel leverages Fhenix FHE to provide truly private hands, encrypted bullets, and hidden bluffs.
+            Traditional on-chain games are limited by public state. Bluff and Barrel leverages Zama fhEVM to provide truly private hands, encrypted bullets, and hidden bluffs — on Ethereum Sepolia.
           </p>
           <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
             {['End-to-End Encryption', 'Hidden On-Chain State', 'Instant Reveal', 'Provably Fair'].map((label, i) => (
