@@ -6,13 +6,73 @@ No trusted server. No oracle. Pure cryptographic deception.
 
 ---
 
+## How to Play
+
+### Objective
+Be the last player standing. Lose a challenge and you face the revolver. Get shot and you're out.
+
+### Setup
+- 2–4 players join a table. Host starts the game.
+- Each player is dealt a hand of encrypted cards — only you can see your own cards.
+- A **target card** is announced face-up each round (e.g. "this round is Kings").
+
+### A Turn
+On your turn you must play 1–3 cards face-down and **claim they are all the target card** (or Jokers, which are always valid). You don't have to tell the truth.
+
+The next player then has two choices:
+- **Play cards** — accept the claim and play their own cards
+- **Call LIAR** — challenge the previous player's claim
+
+### Challenge Resolution
+When someone calls LIAR, the contract verifies the claim using FHE — the actual card values are compared to the target entirely in encrypted space. Nobody sees the result until the decryption proof is submitted on-chain:
+
+- **Liar caught** (cards didn't match) → the accused spins the revolver
+- **Wrong call** (cards were valid) → the accuser spins the revolver
+
+### Russian Roulette
+The spinner faces their personal 6-chamber revolver. The bullet position was randomly encrypted at game start — not even the contract knows it until the spin result is decrypted.
+
+- **Click** — safe, game continues with a new round
+- **Bang** — player is eliminated
+
+Last player alive wins. If there are USDC stakes, the pot is paid out automatically minus a 5% platform fee.
+
+### Points System (Basic + Devil modes)
+Playing cards earns points equal to the number of cards played. Points unlock the **Execute** power-move — spend 5+ points to instantly eliminate the player with the lowest score (once per game).
+
+---
+
 ## Game Modes
 
-| Mode | Cards | Special |
-|------|-------|---------|
-| **Basic** | 20 (6A+6K+6Q+2J) | Joker is wild |
-| **Devil** | 20 (5+1Devil+6+6+2J) | Devil card — all others spin |
-| **Chaos** | 12 (5K+5Q+1Master+1Chaos) | Choose who gets shot |
+### Basic
+Standard rules. 20-card deck: 6 Aces, 6 Kings, 6 Queens, 2 Jokers. Deal 5 cards per player. Jokers are wild — always count as valid regardless of the target card.
+
+### Devil
+Same as Basic but the deck contains 1 Devil card. The Devil can only be played alone (1 card). If the Devil is revealed during a challenge, **all other players** spin the revolver simultaneously — the Devil player is immune. Use it wisely.
+
+### Chaos
+Faster, more aggressive. 12-card deck: 5 Kings, 5 Queens, 1 Master, 1 Chaos. 3 cards per player, play exactly 1 per turn.
+
+Challenge resolution differs from Basic:
+- **Regular card caught lying** → challenger chooses who gets shot
+- **Master card revealed** → accused gets to shoot someone of their choice
+- **Chaos card revealed** → all players simultaneously shoot an opponent of their choice
+
+Master and Chaos cards are never considered lies — playing them always passes a challenge.
+
+---
+
+## How FHE Makes This Work
+
+The game has two secrecy requirements: your cards must be hidden from other players, and the bullet position must be hidden from everyone (including the contract) until the moment of the shot.
+
+**Card dealing** — each card is generated with `FHE.randEuint8()` and bounded to the deck distribution using encrypted arithmetic. Only the dealing player receives ACL permission via `FHE.allow(card, playerAddress)`. Other players and the contract cannot read the card value.
+
+**Hand decryption** — you click "Reveal Cards" and the frontend calls `sdk.decryption.decryptValues()` from `@zama-fhe/react-sdk`. The Zama Relayer re-encrypts the card under your wallet's public key so only your browser can read it. Keypair and EIP-712 signing are managed automatically by `ZamaProvider`.
+
+**Challenge verification** — when LIAR is called, the contract runs `FHE.eq(card, targetCard)` for each played card, all in encrypted space. The result is an encrypted boolean (`ebool`) — even the contract doesn't know if the claim was valid. `FHE.makePubliclyDecryptable()` marks it for public decryption. Any player's frontend calls `useDecryptPublicValues()`, gets the cleartext result plus a Zama KMS cryptographic proof, and submits both on-chain. `FHE.checkSignatures()` verifies the proof and the state machine advances.
+
+**Bullet / spin** — the bullet position is `FHE.randEuint8()` bounded to chambers 1–6, assigned at game start. Each spin increments a plaintext chamber counter and computes `FHE.eq(bulletPosition, chamberPointer)` — producing an `ebool` that gets publicly decrypted via the same proof flow. The result (bang or click) is provably fair and was never visible to anyone until that moment.
 
 ---
 
@@ -28,16 +88,6 @@ Chaos Game:  0x3C7b6B93E8fc5891A55AE683eD37A465Dc49cFDb
 Chaos Deck:  0x0b1dBC98A1c8a77d031e689eCa606CB342D6ab11
 USDC:        0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238
 ```
-
----
-
-## How FHE Works Here
-
-**Cards** — encrypted at deal time with `FHE.randEuint8()`. Only the player can decrypt their own hand via `sdk.decryption.decryptValues()` from `@zama-fhe/react-sdk`.
-
-**Challenge** — contract computes `FHE.eq(card, target)` entirely in encrypted space. Result is an `ebool` handle. Anyone calls `useDecryptPublicValues()` → gets cleartext + Zama KMS proof → submits `publishChallengeResult(bool, abiEncoded, proof)` → `FHE.checkSignatures()` verifies on-chain.
-
-**Spin** — bullet position is `FHE.randEuint8()` bounded to 1-6. `FHE.eq(bulletPos, chamberPtr)` produces an `ebool`. Same publicDecrypt → checkSignatures flow.
 
 ---
 
@@ -99,4 +149,4 @@ liarsbar2/
 ## Docs
 
 - [ARCHITECTURE.md](./ARCHITECTURE.md) — system diagrams + FHE flow
-- [CONTRACTS.md](./CONTRACTS.md) — contract details
+- [CONTRACTS.md](./CONTRACTS.md) — contract ABI reference

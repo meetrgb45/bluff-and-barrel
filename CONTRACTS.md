@@ -15,16 +15,15 @@ USDC:        0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238
 
 ---
 
-## Key Differences from Fhenix Version
+## Frontend SDK
 
-| Feature | Fhenix CoFHE | Zama fhEVM |
-|---------|-------------|------------|
-| Random | `FHE.randomEuint8()` | `FHE.randEuint8()` |
-| `rem` divisor | encrypted | plaintext only |
-| Decrypt flow | push (`publishDecryptResult`) | pull (`makePubliclyDecryptable` → `publicDecrypt` → `checkSignatures`) |
-| Hand decrypt | permit-based | `FHE.allow(card, player)` + `userDecrypt` |
-| Chain | Arb Sepolia | Eth Sepolia |
-| Gas estimation | broken for FHE txs | works correctly |
+| Operation | Hook | SDK Call |
+|-----------|------|----------|
+| Decrypt own hand | `useMyHand` | `sdk.decryption.decryptValues([{encryptedValue, contractAddress}])` |
+| Resolve challenge | `useChallenge` | `useDecryptPublicValues().mutateAsync([handle])` |
+| Resolve spin | `useSpin` | `useDecryptPublicValues().mutateAsync([handle])` |
+
+All from `@zama-fhe/react-sdk` + `@zama-fhe/sdk`. `ZamaProvider` in `App.tsx` handles init.
 
 ---
 

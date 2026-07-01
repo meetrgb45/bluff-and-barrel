@@ -6,7 +6,7 @@
 ┌─────────────────────────────────────────────────────────────┐
 │                        BROWSER                               │
 │                                                              │
-│  React + wagmi + fhevmjs                                     │
+│  React + wagmi + @zama-fhe/react-sdk                        │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
 │  │  Lobby   │  │GameRoom  │  │Challenge │  │  Spin    │   │
 │  │  UI      │  │  UI      │  │ Overlay  │  │Animation │   │
@@ -17,8 +17,9 @@
 │  └────────────────────────┬───────────────────────────────┘  │
 │                           │                                   │
 │  ┌────────────────────────▼───────────────────────────────┐  │
-│  │                   fhevmjs SDK                          │  │
-│  │  userDecrypt (hand)  │  publicDecrypt (challenge/spin) │  │
+│  │          @zama-fhe/react-sdk + @zama-fhe/sdk           │  │
+│  │  useDecryptValues (hand)  │  useDecryptPublicValues     │  │
+│  │                           │  (challenge + spin)         │  │
 │  └────────────────────────┬───────────────────────────────┘  │
 └───────────────────────────┼─────────────────────────────────┘
                             │
@@ -89,9 +90,9 @@ FHE.allowThis(card)  ►    Contract keeps handle for verification
 
 Player Browser
 ──────────────
-fhevmjs.userDecrypt([handle])
-    → wallet signs EIP-712
-    → Zama KMS decrypts privately for that wallet only
+sdk.decryption.decryptValues([{ encryptedValue: handle, contractAddress: deckAddr }])
+    → ZamaProvider manages keypair + EIP-712 signing automatically
+    → Zama Relayer decrypts privately for that wallet only
     → returns plaintext card value (0-3 or 0-4)
 
 
@@ -107,8 +108,8 @@ FHE.makePubliclyDecryptable(result)
 
 Any Player Browser
 ──────────────────
-fhevmjs.publicDecrypt([handle])
-    → Zama KMS returns cleartext + cryptographic proof
+useDecryptPublicValues().mutateAsync([handle])
+    → Zama Relayer returns cleartext + cryptographic proof
     → contract.publishChallengeResult(bool, abiEncoded, proof)
     → FHE.checkSignatures() verifies proof on-chain
 
@@ -123,8 +124,8 @@ FHE.makePubliclyDecryptable(fired)
 
 Any Player Browser
 ──────────────────
-fhevmjs.publicDecrypt([spinHandle])
-    → Zama KMS returns fired=true/false + proof
+useDecryptPublicValues().mutateAsync([spinHandle])
+    → Zama Relayer returns fired=true/false + proof
     → contract.publishSpinResult(bool, abiEncoded, proof)
     → FHE.checkSignatures() verifies → state transitions
 ```
