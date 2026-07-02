@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useAccount, usePublicClient, useWriteContract } from 'wagmi';
 import { useGameStore } from '../stores/gameStore';
+import { wsNotify } from './useWebSocket';
 import {
   GAME_ADDRESS, GAME_ABI,
   DEVIL_GAME_ADDRESS, DEVIL_GAME_ABI,
@@ -22,15 +23,6 @@ function getDeckContracts(mode: string) {
   return { address: DECK_ADDRESS, abi: DECK_ABI };
 }
 
-/**
- * Handles two auto-action scenarios:
- *
- * 1. DEALING state — sequentially calls dealNextPlayer until all players
- *    are dealt (3 calls after initDeal). Any participant can drive this.
- *    First player to detect Dealing state drives it; others skip if already in progress.
- *
- * 2. PlayerTurn timeout — auto-play first unplayed card after 55s.
- */
 export function useAutoAction() {
   const { address } = useAccount();
   const publicClient = usePublicClient();
@@ -41,34 +33,31 @@ export function useAutoAction() {
   const round = useGameStore((s) => s.round);
   const players = useGameStore((s) => s.players);
   const currentTurnIndex = useGameStore((s) => s.currentTurnIndex);
-  const playedCards = useGameStore((s) => s.playedCards);
-  const lastClaimant = useGameStore((s) => s.lastClaimant);
   const markCardsPlayed = useGameStore((s) => s.markCardsPlayed);
+
   const autoActedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const dealingRef = useRef(false);
+  const dealAbortRef = useRef<AbortController | null>(null);
 
   const isMyTurn = players[currentTurnIndex]?.addr?.toLowerCase() === address?.toLowerCase();
-  const isParticipant = players.some(p => p.addr?.toLowerCase() === address?.toLowerCase());
+  const isHost = players[0]?.addr?.toLowerCase() === address?.toLowerCase();
 
-  // Reset flags on state/turn change
+  // Reset auto-act flag on turn/state change
   useEffect(() => {
     autoActedRef.current = false;
     if (timerRef.current) clearTimeout(timerRef.current);
   }, [state, currentTurnIndex]);
 
-  // ─── Dealing state: only host (player[0]) drives dealNextPlayer calls ──
-  // Other players don't touch this — they just wait for state to move to PlayerTurn.
-  // This eliminates the "5 popups per player" problem.
-  const isHost = players[0]?.addr?.toLowerCase() === address?.toLowerCase();
-
+  // ─── Dealing: host drives dealNextPlayer, abort on state exit ────────────
   useEffect(() => {
-    if (state !== 'Dealing') { dealingRef.current = false; return; }
-    if (!publicClient || gameId === null || !address) return;
-    if (!isHost) return; // only host drives dealing
-    if (dealingRef.current) return;
+    if (state !== 'Dealing') {
+      dealAbortRef.current?.abort();
+      return;
+    }
+    if (!publicClient || gameId === null || !address || !isHost) return;
 
-    dealingRef.current = true;
+    const ctrl = new AbortController();
+    dealAbortRef.current = ctrl;
 
     const driveDealing = async () => {
       const { address: gameAddr, abi } = getContracts(gameMode);
@@ -76,49 +65,61 @@ export function useAutoAction() {
       const rid = BigInt(gameId) * 100n + BigInt(round);
 
       for (let i = 0; i < 3; i++) {
-        // Re-read fresh state — game may have already advanced
-        if (useGameStore.getState().state !== 'Dealing') break;
+        if (ctrl.signal.aborted) return;
+        if (useGameStore.getState().state !== 'Dealing') return;
 
         try {
+          // Check on-chain whether next player is still needed
           const [nextPlayerIndex, active] = await publicClient.readContract({
             address: deckAddr, abi: deckAbi,
             functionName: 'getDealState',
             args: [rid],
           }) as [number, boolean];
 
-          if (!active) break; // all players already dealt
+          if (!active) return; // all dealt
 
-          await writeContractAsync({
+          if (ctrl.signal.aborted) return;
+
+          const hash = await writeContractAsync({
             address: gameAddr, abi,
             functionName: 'dealNextPlayer',
             args: [BigInt(gameId)],
           });
 
-          // Wait for chain to process before next call
-          await new Promise(r => setTimeout(r, 3000));
+          wsNotify();
+
+          // Wait for confirmation before dealing the next player
+          await publicClient.waitForTransactionReceipt({ hash });
+
+          if (ctrl.signal.aborted) return;
+
         } catch (e: any) {
-          if (/User rejected|denied/i.test(e?.message || '')) break;
+          if (ctrl.signal.aborted) return;
+          if (/User rejected|denied/i.test(e?.message || '')) return;
           console.warn(`[autoAction] dealNextPlayer ${i + 1} failed:`, e?.message);
-          await new Promise(r => setTimeout(r, 4000));
+          // Brief backoff before retry
+          await new Promise(r => setTimeout(r, 2000));
+          if (ctrl.signal.aborted) return;
           // Retry once
           try {
-            if (useGameStore.getState().state !== 'Dealing') break;
-            await writeContractAsync({
+            if (useGameStore.getState().state !== 'Dealing') return;
+            const hash = await writeContractAsync({
               address: gameAddr, abi,
               functionName: 'dealNextPlayer',
               args: [BigInt(gameId)],
             });
-            await new Promise(r => setTimeout(r, 3000));
-          } catch { break; }
+            wsNotify();
+            await publicClient.waitForTransactionReceipt({ hash });
+          } catch { return; }
         }
       }
-      dealingRef.current = false;
     };
 
     driveDealing();
+    return () => ctrl.abort();
   }, [state, gameId, gameMode, round, address, isHost, publicClient, writeContractAsync]);
 
-  // ─── PlayerTurn timeout: auto-play after 55s ──────────────────────────
+  // ─── PlayerTurn timeout: auto-play after 55s ─────────────────────────────
   useEffect(() => {
     if (!publicClient || gameId === null || !address) return;
     if (state !== 'PlayerTurn' || !isMyTurn) return;
@@ -130,6 +131,7 @@ export function useAutoAction() {
 
       try {
         const { address: gameAddr, abi } = getContracts(gameMode);
+        // Read fresh from store inside callback — avoids stale closure
         const freshState = useGameStore.getState();
         const freshPlayedCards = freshState.playedCards;
         const freshLastClaimant = freshState.lastClaimant;
@@ -139,19 +141,19 @@ export function useAutoAction() {
 
         const maxCards = gameMode === 'chaos' ? 3 : 5;
         const unplayedIndex = Array.from({ length: maxCards }, (_, i) => i)
-          .find((i) => !freshPlayedCards.includes(i));
+          .find(i => !freshPlayedCards.includes(i));
 
         if (unplayedIndex !== undefined) {
-          console.log('[autoAction] timer expired, auto-playing card', unplayedIndex);
           if (gameMode === 'chaos') {
             await writeContractAsync({ address: gameAddr, abi, functionName: 'playCard', args: [BigInt(gameId), unplayedIndex] });
           } else {
             await writeContractAsync({ address: gameAddr, abi, functionName: 'playCards', args: [BigInt(gameId), [unplayedIndex]] });
           }
+          wsNotify();
           markCardsPlayed([unplayedIndex]);
         } else if (hasClaimToChallenge) {
-          console.log('[autoAction] timer expired, auto-calling liar');
           await writeContractAsync({ address: gameAddr, abi, functionName: 'callLiar', args: [BigInt(gameId)] });
+          wsNotify();
         }
       } catch (e) {
         console.error('[autoAction] failed:', e);
@@ -159,5 +161,6 @@ export function useAutoAction() {
     }, 55000);
 
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [state, isMyTurn, gameId, address, publicClient, writeContractAsync, playedCards, lastClaimant, markCardsPlayed, gameMode]);
+    // playedCards and lastClaimant intentionally NOT in deps — read fresh from store inside callback
+  }, [state, isMyTurn, gameId, address, publicClient, writeContractAsync, markCardsPlayed, gameMode]);
 }

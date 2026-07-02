@@ -37,7 +37,7 @@ interface GameStore {
   lastClaimant: string;
   lastClaimCount: number;
   chamberPointer: number;
-  chamberPointers: Record<string, number>; // per-player
+  chamberPointers: Record<string, number>;
   pendingSpinner: string;
   revealedCards: number[];
   myCharacter: number;

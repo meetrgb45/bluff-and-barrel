@@ -9,7 +9,7 @@
     "build": "hardhat compile && node scripts/copy-abis.js",
     "test": "REPORT_GAS=true hardhat test",
     "deploy:local": "hardhat run scripts/deploy.ts --network hardhat",
-    "deploy:arb-sepolia": "hardhat run scripts/deploy.ts --network arb-sepolia",
+    "deploy:eth-sepolia": "hardhat run scripts/deploy-all.ts --network eth-sepolia",
     "clean": "rimraf ./artifacts ./cache ./typechain-types"
   },
   "devDependencies": {

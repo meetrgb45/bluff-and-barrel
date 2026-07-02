@@ -4,6 +4,7 @@ import { useDecryptPublicValues } from '@zama-fhe/react-sdk';
 import { GAME_ADDRESS, GAME_ABI, DEVIL_GAME_ADDRESS, DEVIL_GAME_ABI, CHAOS_GAME_ADDRESS, CHAOS_GAME_ABI } from '../lib/contracts';
 import { useGameStore } from '../stores/gameStore';
 import { gasFor } from '../lib/gas';
+import { wsNotify } from './useWebSocket';
 
 export type SpinOutcome = 'click' | 'bang' | null;
 
@@ -52,15 +53,18 @@ export function useSpin() {
         const results = await decryptPublicValues.mutateAsync([spinHandle]);
         const fired = Boolean(results.clearValues[spinHandle]);
 
-        // Step 3: Submit proof on-chain — wait for confirmation before revealing outcome
-        await writeContractAsync({
+        // Step 3: Submit proof on-chain and wait for CONFIRMATION before revealing outcome
+        const hash = await writeContractAsync({
           address: gameAddr, abi,
           functionName: 'publishSpinResult',
           args: [BigInt(gameId), fired, results.abiEncodedClearValues, results.decryptionProof],
           ...(await gasFor('publishSpinResult', publicClient)),
         });
 
-        // Only show outcome AFTER the tx is confirmed on-chain
+        // Wait for the tx to be mined — outcome only shown after on-chain confirm
+        await publicClient.waitForTransactionReceipt({ hash });
+        wsNotify();
+        // Set outcome BEFORE clearing spinning so animation state is never (false, null)
         setOutcome(fired ? 'bang' : 'click');
         setSpinning(false);
         return;

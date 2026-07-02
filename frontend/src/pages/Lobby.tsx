@@ -51,6 +51,8 @@ export default function Lobby() {
   const setMyCharacter = useGameStore((s) => s.setMyCharacter);
   const [mode, setMode] = useState<Mode>((searchParams.get('mode') as Mode) || 'basic');
   const [joinId, setJoinId] = useState(searchParams.get('join') || '');
+  // Lock mode when it comes from the landing page (mode param present) or from an invite link
+  const modeLocked = !!searchParams.get('mode') || !!searchParams.get('join');
   const [stakeInput, setStakeInput] = useState('');
   const [loading, setLoading] = useState('');
   const [error, setError] = useState('');
@@ -146,19 +148,31 @@ export default function Lobby() {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
-          {/* Mode selector — locked if invite */}
+          {/* Mode display — same btn design whether locked or free */}
           <div style={{ display: 'flex', gap: '0.5rem', width: '100%', alignItems: 'center' }}>
             {(Object.keys(MODE_CONFIG) as Mode[]).map((m) => (
-              <button key={m} onClick={() => !isInvite && setMode(m)} className={`btn ${mode === m ? 'green' : ''}`} style={{
-                flex: 1, padding: '0.55rem 0', fontSize: '0.85rem',
-                opacity: mode === m ? 1 : 0.4,
-                cursor: isInvite ? 'default' : 'pointer',
-              }}>
+              <button
+                key={m}
+                onClick={() => !modeLocked && setMode(m)}
+                className={`btn ${mode === m ? 'green' : ''}`}
+                style={{
+                  flex: 1, padding: '0.55rem 0', fontSize: '0.85rem',
+                  opacity: mode === m ? 1 : 0.4,
+                  cursor: modeLocked ? 'default' : 'pointer',
+                }}
+              >
                 {MODE_CONFIG[m].label}
               </button>
             ))}
             <button onClick={() => setShowRules(true)} style={{ width: 32, height: 32, borderRadius: '50%', background: '#1a1008', border: '2px solid #5a4a3a', color: '#c9a84c', fontSize: '1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>?</button>
           </div>
+          {modeLocked && (
+            <div style={{ width: '100%', textAlign: 'right', marginTop: '-0.5rem' }}>
+              <button onClick={() => navigate('/lobby')} style={{ fontSize: '0.6rem', color: '#5a4a3a', background: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
+                change mode
+              </button>
+            </div>
+          )}
 
           {/* Invite info banner */}
           {isInvite && (
@@ -243,7 +257,7 @@ export default function Lobby() {
             </>
           )}
 
-          <p style={{ color: '#7a6a5a', fontSize: '0.65rem', marginTop: '0.3rem' }}>4 Players • FHE Encrypted • Arb Sepolia</p>
+          <p style={{ color: '#7a6a5a', fontSize: '0.65rem', marginTop: '0.3rem' }}>4 Players • FHE Encrypted • Ethereum Sepolia</p>
         </div>
       </div>
 

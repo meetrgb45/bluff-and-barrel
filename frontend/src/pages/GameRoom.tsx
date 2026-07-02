@@ -1,17 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAccount, usePublicClient, useWriteContract } from 'wagmi';
+import { useDecryptPublicValues } from '@zama-fhe/react-sdk';
 import { useGameStore } from '../stores/gameStore';
 import { useGameState } from '../hooks/useGameState';
 import { useMyHand } from '../hooks/useMyHand';
 import { useChallenge } from '../hooks/useChallenge';
 import { useSpin } from '../hooks/useSpin';
 import { useAutoAction } from '../hooks/useAutoAction';
-import { useWebSocket } from '../hooks/useWebSocket';
+import { useWebSocket, wsNotify } from '../hooks/useWebSocket';
 import {
   GAME_ADDRESS, GAME_ABI,
   DEVIL_GAME_ADDRESS, DEVIL_GAME_ABI,
   CHAOS_GAME_ADDRESS, CHAOS_GAME_ABI,
+  DECK_ADDRESS, DECK_ABI,
+  DEVIL_DECK_ADDRESS, DEVIL_DECK_ABI,
+  CHAOS_DECK_ADDRESS, CHAOS_DECK_ABI,
 } from '../lib/contracts';
 import { getGasOverrides, getHeavyGasOverrides } from '../lib/gas';
 import { sounds, isMuted, toggleMute } from '../lib/sounds';
@@ -27,6 +31,57 @@ function getModeConfig(mode: GameMode) {
   if (mode === 'devil') return { address: DEVIL_GAME_ADDRESS, abi: DEVIL_GAME_ABI };
   if (mode === 'chaos') return { address: CHAOS_GAME_ADDRESS, abi: CHAOS_GAME_ABI };
   return { address: GAME_ADDRESS, abi: GAME_ABI };
+}
+
+// ─── Dealing progress indicator ─────────────────────────────────────────────
+function DealingProgress({ gameId, gameMode, round }: { gameId: number; gameMode: string; round: number }) {
+  const publicClient = usePublicClient();
+  const [step, setStep] = useState(0); // 0 = unknown, 1-4 = players dealt
+
+  useEffect(() => {
+    if (!publicClient) return;
+    const { address: deckAddr, abi: deckAbi } = (() => {
+      if (gameMode === 'devil') return { address: DEVIL_DECK_ADDRESS, abi: DEVIL_DECK_ABI };
+      if (gameMode === 'chaos') return { address: CHAOS_DECK_ADDRESS, abi: CHAOS_DECK_ABI };
+      return { address: DECK_ADDRESS, abi: DECK_ABI };
+    })();
+    const rid = BigInt(gameId) * 100n + BigInt(round);
+    const poll = async () => {
+      try {
+        const [nextIdx] = await publicClient.readContract({
+          address: deckAddr, abi: deckAbi, functionName: 'getDealState', args: [rid],
+        }) as [number, boolean];
+        setStep(Number(nextIdx)); // nextIdx = how many players have been dealt so far
+      } catch {}
+    };
+    // Poll immediately, then every 2s, and also on WS state-changed signal
+    poll();
+    const t = setInterval(poll, 2000);
+    window.addEventListener('state-changed', poll);
+    return () => { clearInterval(t); window.removeEventListener('state-changed', poll); };
+  }, [publicClient, gameId, gameMode, round]);
+
+  const dealt = Math.min(step, 4);
+  return (
+    <div style={{ textAlign: 'center' }}>
+      <p style={{ fontSize: '1.1rem', color: '#c9a84c', marginBottom: '1.2rem' }}>Dealing cards...</p>
+      <div style={{ display: 'flex', gap: '0.6rem', justifyContent: 'center', marginBottom: '1rem' }}>
+        {[0, 1, 2, 3].map(i => (
+          <div key={i} style={{
+            width: 40, height: 56, borderRadius: '0.3rem',
+            backgroundImage: i < dealt ? 'url(/playing_card/back1.png)' : 'none',
+            backgroundSize: 'cover',
+            border: i < dealt ? '2px solid #c9a84c' : '2px dashed #3a2a1a',
+            transition: 'all 0.4s',
+            opacity: i < dealt ? 1 : 0.25,
+          }} />
+        ))}
+      </div>
+      <p style={{ fontSize: '0.75rem', color: '#8b7b5a' }}>
+        {dealt}/4 players dealt · FHE encrypting hands
+      </p>
+    </div>
+  );
 }
 
 export default function GameRoom() {
@@ -54,6 +109,7 @@ export default function GameRoom() {
   const markCardsPlayed = useGameStore((s) => s.markCardsPlayed);
   const lastClaimant = useGameStore((s) => s.lastClaimant);
   const lastClaimCount = useGameStore((s) => s.lastClaimCount);
+  const chamberPointer = useGameStore((s) => s.chamberPointer);
   const chamberPointers = useGameStore((s) => s.chamberPointers);
   const pendingSpinner = useGameStore((s) => s.pendingSpinner);
   const resetPlayedCards = useGameStore((s) => s.resetPlayedCards);
@@ -81,10 +137,38 @@ export default function GameRoom() {
   useAutoAction();
   const { notifyStateChanged } = useWebSocket();
 
+  // Decrypt revealed card handles for ALL players (not just the accuser).
+  // useGameState polls and dispatches 'reveal-handles-ready' when handles are found.
+  const decryptPublicValuesForReveal = useDecryptPublicValues();
+  const setRevealedCards = useGameStore((s) => s.setRevealedCards);
+  useEffect(() => {
+    const handler = async (e: Event) => {
+      const { handles } = (e as CustomEvent).detail as { handles: `0x${string}`[] };
+      try {
+        const results = await decryptPublicValuesForReveal.mutateAsync(handles);
+        const cards = handles.map(h => Number(results.clearValues[h]));
+        setRevealedCards(cards);
+      } catch (err) {
+        console.warn('[reveal] failed to decrypt card handles:', err);
+        // Clear the 'pending' lock so it can retry
+        useGameStore.getState().setRevealedCards([]);
+      }
+    };
+    window.addEventListener('reveal-handles-ready', handler);
+    return () => window.removeEventListener('reveal-handles-ready', handler);
+  }, [decryptPublicValuesForReveal, setRevealedCards]);
+
   useEffect(() => { if (id) { setGameId(Number(id)); setGameMode(mode); } }, [id, mode, setGameId, setGameMode]);
 
   // Reset triggered when state changes
   useEffect(() => { if (state !== 'MultiSpinning') setTriggered(false); }, [state]);
+
+  // Auto-clear spin outcome when we leave spinning states — prevents stale overlay on next phase
+  useEffect(() => {
+    if (state !== 'Spinning' && state !== 'MultiSpinning' && state !== 'Shooting') {
+      clearOutcome();
+    }
+  }, [state, clearOutcome]);
 
   // Sound on game over
   useEffect(() => { if (state === 'GameOver') sounds.gameOver(); }, [state]);
@@ -98,35 +182,42 @@ export default function GameRoom() {
     }
   }, [round, resetPlayedCards]);
 
-  // Auto-decrypt: trigger when we reach PlayerTurn (dealing is fully done by then)
-  // Also allow retry if state is Challenging/Spinning but hand still null (missed event)
+  // Auto-decrypt: try immediately on PlayerTurn, retry once after 6s if hand still null
   useEffect(() => {
     if (!fhevmReady || !myPlayer?.alive || round === 0) return;
     if (state !== 'PlayerTurn') return;
     if (handDecryptedRef.current === round) return;
 
     handDecryptedRef.current = round;
-    // Small delay to let Zama relayer index the newly dealt cards
-    const attempt = setTimeout(decryptHand, 4000);
+    decryptHand(); // immediate attempt
 
-    // Retry after 20s if still null
+    // Retry after 6s if still null (Zama relayer may need time to index)
     const retry = setTimeout(() => {
-      const hand = useGameStore.getState().myHand;
-      if (hand.every(c => c === null)) {
-        handDecryptedRef.current = 0; // allow re-trigger next render
+      if (useGameStore.getState().myHand.every(c => c === null)) {
+        handDecryptedRef.current = 0;
+        decryptHand();
       }
-    }, 24000);
-    return () => { clearTimeout(attempt); clearTimeout(retry); };
+    }, 6000);
+    return () => clearTimeout(retry);
   }, [fhevmReady, state, round, decryptHand, myPlayer?.alive]);
 
   const iAmChallenger = players[currentTurnIndex]?.addr?.toLowerCase() === address?.toLowerCase();
 
-  // ─── Challenge phase controller ───────────────────────────────────────────
-  // Single effect that drives phases in strict sequence, one at a time.
-  // Prevents overlaps: accusation → revealing → verdict → null
+  // Block SpinAnimation from showing until verdict overlay is fully done
+  const spinBlockedRef = useRef(false);
+  // All challenge-phase timers tracked so they can be cleaned up on state exit
+  const challengeTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const clearChallengeTimers = () => {
+    challengeTimersRef.current.forEach(clearTimeout);
+    challengeTimersRef.current = [];
+  };
+
+  // ─── Challenge phase controller ─────────────────────────────────────────
   useEffect(() => {
-    // Step 1: PlayerTurn → Challenging: start accusation phase
     if (prevStateRef.current === 'PlayerTurn' && state === 'Challenging') {
+      clearChallengeTimers();
+      spinBlockedRef.current = true;
+
       const accuserIdx = currentTurnIndex;
       const accusedIdx = players.findIndex(p => p.addr?.toLowerCase() === lastClaimant?.toLowerCase());
       setChallengeAccuser(accuserIdx);
@@ -134,48 +225,54 @@ export default function GameRoom() {
       setChallengePhase('accusation');
       sounds.gong();
 
-      // After accusation beats, auto-trigger resolve if I'm the challenger
-      setTimeout(() => {
+      const t1 = setTimeout(() => {
         setChallengePhase('revealing');
         sounds.cardFlip();
-        // Auto-trigger challenge resolution for the accuser
-        if (!challengeResolvedRef.current && iAmChallenger) {
+        // Read fresh from store to avoid stale iAmChallenger closure
+        const freshPlayers = useGameStore.getState().players;
+        const freshTurnIdx = useGameStore.getState().currentTurnIndex;
+        const iAmChallengerFresh = freshPlayers[freshTurnIdx]?.addr?.toLowerCase() === address?.toLowerCase();
+        if (!challengeResolvedRef.current && iAmChallengerFresh) {
           challengeResolvedRef.current = true;
-          setTimeout(resolveChallenge, 1500);
+          const t2 = setTimeout(resolveChallenge, 1000);
+          challengeTimersRef.current.push(t2);
         }
       }, 2000);
+      challengeTimersRef.current.push(t1);
     }
 
-    // Step 2: Challenging → Spinning: show verdict once card reveal data arrives
     if (prevStateRef.current === 'Challenging' && state === 'Spinning') {
       const currentPendingSpinner = useGameStore.getState().pendingSpinner;
-      const currentLastClaimant  = useGameStore.getState().lastClaimant;
+      const currentLastClaimant = useGameStore.getState().lastClaimant;
       const spinnerIsAccused = currentPendingSpinner?.toLowerCase() === currentLastClaimant?.toLowerCase();
       const verdictPhase = spinnerIsAccused ? 'verdict-lie' : 'verdict-valid';
 
-      // Wait for revealedCards to arrive (set by useChallenge after publicDecrypt)
-      // then show verdict. Fallback: show after 2s regardless.
-      let waited = 0;
-      const waitForCards = () => {
+      let attempts = 0;
+      const showVerdict = () => {
         const cards = useGameStore.getState().revealedCards;
-        if (cards.length > 0 || waited >= 8) {
+        const ready = cards.length > 0 && typeof cards[0] === 'number';
+        if (ready || attempts >= 10) {
           setChallengePhase(verdictPhase);
-          setTimeout(() => setChallengePhase(null), 4000);
+          const t3 = setTimeout(() => {
+            setChallengePhase(null);
+            const t4 = setTimeout(() => { spinBlockedRef.current = false; }, 300);
+            challengeTimersRef.current.push(t4);
+          }, 3500);
+          challengeTimersRef.current.push(t3);
         } else {
-          waited++;
-          setTimeout(waitForCards, 500);
+          attempts++;
+          const t5 = setTimeout(showVerdict, 500);
+          challengeTimersRef.current.push(t5);
         }
       };
-      waitForCards();
+      showVerdict();
     }
 
-    // Step 3: Clear overlay whenever we leave challenge/spin territory
-    if (
-      state === 'PlayerTurn' || state === 'Dealing' ||
-      state === 'GameOver' || state === 'MultiSpinning' ||
-      state === 'Targeting' || state === 'MultiTargeting' || state === 'Shooting'
-    ) {
+    // Exit challenge/spin territory — clean up everything immediately
+    if (state === 'PlayerTurn' || state === 'Dealing' || state === 'GameOver') {
+      clearChallengeTimers();
       setChallengePhase(null);
+      spinBlockedRef.current = false;
     }
 
     prevStateRef.current = state;
@@ -191,13 +288,25 @@ export default function GameRoom() {
 
   const startGame = async () => {
     setError(''); setLoading(true);
-    try {
-      const gas = await getHeavyGasOverrides(publicClient!);
-      const hash = await writeContractAsync({ address: gameContractAddress, abi: gameAbi, functionName: 'startGame', args: [BigInt(id!)], ...gas });
-      await publicClient!.waitForTransactionReceipt({ hash });
-      notifyStateChanged();
-      sounds.gameStart();
-    } catch (e: any) { setError(e.shortMessage || e.message); }
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        if (attempt > 0) await new Promise(r => setTimeout(r, 3000));
+        const hash = await writeContractAsync({
+          address: gameContractAddress, abi: gameAbi,
+          functionName: 'startGame',
+          args: [BigInt(id!)],
+        });
+        await publicClient!.waitForTransactionReceipt({ hash });
+        wsNotify();
+        sounds.gameStart();
+        setLoading(false);
+        return;
+      } catch (e: any) {
+        if (/user rejected|denied/i.test(e?.message || '')) { setLoading(false); return; }
+        if (attempt === 0) continue; // retry once
+        setError(e.shortMessage || e.message || 'Transaction failed');
+      }
+    }
     setLoading(false);
   };
 
@@ -280,7 +389,7 @@ export default function GameRoom() {
 
   return (
     <div style={{ width: '100%', height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <SpinAnimation outcome={outcome} spinning={spinning && !challengePhase} onDismiss={clearOutcome} />
+      <SpinAnimation outcome={outcome} spinning={spinning && !challengePhase} onDismiss={clearOutcome} blocked={spinBlockedRef.current} />
       <ChallengeOverlay phase={challengePhase} accuserIndex={challengeAccuser} accusedIndex={challengeAccused} onDismiss={() => setChallengePhase(null)} />
 
       {/* Nav */}
@@ -315,9 +424,11 @@ export default function GameRoom() {
               <div className={`player-card ${!p.alive ? 'dead' : ''} ${isTurn ? 'active' : ''}`} style={{ backgroundImage: `url(${p.alive ? CHARS[pIdx] : CHARS_DEAD[pIdx]})`, width: 110, height: 110 }}>
                 <span className="player-name" style={{ fontSize: '0.75rem' }}>{CHAR_NAMES[pIdx]}</span>
               </div>
-              <div className="chambers">
-                {Array.from({ length: 6 }, (_, j) => <div key={j} className={`chamber ${j < chambers ? 'safe' : ''}`} style={{ width: 10, height: 10 }} />)}
-              </div>
+              {chambers > 0 && (
+                <div className="chambers">
+                  {Array.from({ length: 6 }, (_, j) => <div key={j} className={`chamber ${j < chambers ? 'safe' : ''}`} style={{ width: 10, height: 10 }} />)}
+                </div>
+              )}
             </div>
           );
         })}
@@ -361,6 +472,10 @@ export default function GameRoom() {
               Copy Invite Link
             </button>
           </div>
+        )}
+
+        {state === 'Dealing' && (
+          <DealingProgress gameId={Number(id!)} gameMode={mode} round={round} />
         )}
 
         {state === 'Challenging' && (
@@ -531,11 +646,11 @@ export default function GameRoom() {
         )}
       </div>
 
-      {/* Bottom — Hand + Actions */}
-      {myPlayer?.alive && (state === 'PlayerTurn' || state === 'Challenging' || state === 'Spinning' || state === 'MultiSpinning') && (
+      {/* Bottom — Hand + Actions (show during all active game states, including Dealing) */}
+      {myPlayer?.alive && (state === 'Dealing' || state === 'PlayerTurn' || state === 'Challenging' || state === 'Spinning' || state === 'MultiSpinning') && (
         <div style={{ padding: '1rem 1.5rem', background: 'rgba(0,0,0,0.5)', borderTop: '1px solid #3a2a1a', zIndex: 20 }}>
           <div className="chambers" style={{ justifyContent: 'center', marginBottom: '0.6rem' }}>
-            {Array.from({ length: 6 }, (_, i) => <div key={i} className={`chamber ${i < (chamberPointers[address?.toLowerCase() || ''] || 0) ? 'safe' : ''}`} style={{ width: 12, height: 12 }} />)}
+            {Array.from({ length: 6 }, (_, i) => <div key={i} className={`chamber ${i < chamberPointer ? 'safe' : ''}`} style={{ width: 12, height: 12 }} />)}
           </div>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '0.6rem', marginBottom: '0.8rem' }}>
             {myHand.slice(0, mode === 'chaos' ? 3 : 5).map((card, i) => {

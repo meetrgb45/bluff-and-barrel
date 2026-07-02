@@ -4,6 +4,7 @@ import { useDecryptPublicValues } from '@zama-fhe/react-sdk';
 import { GAME_ADDRESS, GAME_ABI, DEVIL_GAME_ADDRESS, DEVIL_GAME_ABI, CHAOS_GAME_ADDRESS, CHAOS_GAME_ABI } from '../lib/contracts';
 import { useGameStore } from '../stores/gameStore';
 import { gasFor } from '../lib/gas';
+import { wsNotify } from './useWebSocket';
 
 function getGameContract(mode: string) {
   if (mode === 'devil') return { address: DEVIL_GAME_ADDRESS, abi: DEVIL_GAME_ABI };
@@ -53,6 +54,7 @@ export function useChallenge() {
           args: [BigInt(gameId), allValid, results.abiEncodedClearValues, results.decryptionProof],
           ...(await gasFor('publishChallengeResult', publicClient)),
         });
+        wsNotify();
 
         // Step 4: Decrypt played cards client-side — no on-chain tx, purely for display.
         // revealHandles were set by callLiar (deck.revealCards → makePubliclyDecryptable).

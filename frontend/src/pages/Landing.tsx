@@ -19,21 +19,20 @@ export default function Landing() {
       {/* Scattered cards background */}
       <div className="cards-bg">
         {[
-          { card: 'ace1', left: '3%', top: '15%', rot: '-12deg' },
-          { card: 'king1', left: '88%', top: '8%', rot: '15deg' },
+          { card: 'ace1',   left: '3%',  top: '15%', rot: '-12deg' },
+          { card: 'king1',  left: '88%', top: '8%',  rot: '15deg'  },
           { card: 'queen1', left: '80%', top: '60%', rot: '-10deg' },
-          { card: 'joker1', left: '8%', top: '65%', rot: '22deg' },
-          { card: 'back1', left: '50%', top: '85%', rot: '-20deg' },
-          { card: 'king1', left: '15%', top: '38%', rot: '8deg' },
-          { card: 'ace1', left: '92%', top: '40%', rot: '-16deg' },
-          { card: 'queen1', left: '60%', top: '12%', rot: '5deg' },
-          { card: 'back1', left: '35%', top: '55%', rot: '-30deg' },
-          { card: 'joker1', left: '70%', top: '80%', rot: '18deg' },
+          { card: 'joker1', left: '8%',  top: '65%', rot: '22deg'  },
+          { card: 'back1',  left: '50%', top: '85%', rot: '-20deg' },
+          { card: 'king1',  left: '15%', top: '38%', rot: '8deg'   },
+          { card: 'ace1',   left: '92%', top: '40%', rot: '-16deg' },
+          { card: 'queen1', left: '60%', top: '12%', rot: '5deg'   },
+          { card: 'back1',  left: '35%', top: '55%', rot: '-30deg' },
+          { card: 'joker1', left: '70%', top: '80%', rot: '18deg'  },
         ].map((c, i) => (
           <div key={i} className="floating-card static" style={{
             backgroundImage: `url(/playing_card/${c.card}.png)`,
-            left: c.left,
-            top: c.top,
+            left: c.left, top: c.top,
             ['--rot' as any]: c.rot,
           }} />
         ))}
@@ -41,7 +40,7 @@ export default function Landing() {
 
       {/* Nav */}
       <nav style={{ width: '100%', maxWidth: 1100, padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 40 }}>
-        <span style={{ fontSize: '0.75rem', color: '#8b7b5a', letterSpacing: '0.1em' }}>ZAMA ENCRYPTED</span>
+        <span style={{ fontSize: '0.75rem', color: '#8b7b5a', letterSpacing: '0.1em' }}>ZAMA ENCRYPTED · ETH SEPOLIA</span>
         {isConnected ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
             <span style={{ fontSize: '0.75rem', color: '#c9a84c', fontFamily: 'monospace' }}>{shortenAddress(address!)}</span>
@@ -56,6 +55,7 @@ export default function Landing() {
 
       {/* Content */}
       <div style={{ flex: 1, width: '100%', maxWidth: 1100, padding: '0 1.5rem', zIndex: 30 }}>
+
         {/* Hero */}
         <section style={{ textAlign: 'center', padding: '4rem 0 3rem' }}>
           <div className="game-logo" style={{ display: 'inline-block', position: 'relative', marginBottom: '1rem' }}>
@@ -66,7 +66,7 @@ export default function Landing() {
           </div>
           <p style={{ fontSize: '1.3rem', color: '#dfd5b4', fontStyle: 'italic' }}>Bluff. Deceive. Survive.</p>
           <p style={{ fontSize: '0.85rem', color: '#8b7b5a', maxWidth: 550, margin: '1rem auto 0', lineHeight: 1.6 }}>
-            The first fully on-chain card bluffing game with Russian Roulette. Powered by Zama fhEVM — your secrets remain hidden until you choose to reveal them.
+            The first fully on-chain card bluffing game with Russian Roulette. Powered by Zama fhEVM — your cards stay encrypted on-chain until the moment you're caught.
           </p>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', margin: '2rem 0' }}>
             <div style={{ height: 1, width: 50, background: 'linear-gradient(to right, transparent, #8b7b5a)' }} />
@@ -75,9 +75,10 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* Game Mode Cards */}
+        {/* Game Mode Cards — 3 card modes only */}
         <section style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '4rem' }}>
-          {/* Liar's Deck — ACTIVE */}
+
+          {/* Basic Mode — LIVE */}
           <div style={{ position: 'relative', borderRadius: '0.75rem', overflow: 'hidden' }}>
             <div style={{ position: 'absolute', inset: -2, background: 'linear-gradient(to bottom, #c9a84c, #8a6420)', borderRadius: '0.85rem', opacity: 0.6, filter: 'blur(2px)' }} />
             <div style={{ position: 'relative', background: '#1a110d', borderRadius: '0.75rem', padding: '1.5rem', border: '1px solid rgba(201,168,76,0.3)', boxShadow: '0 0 20px rgba(201,168,76,0.15)', display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -91,41 +92,71 @@ export default function Landing() {
                   ))}
                 </div>
               </div>
-              <h3 style={{ fontSize: '1.3rem', color: '#c9a84c', marginBottom: '0.4rem' }}>Card and Barrel</h3>
-              <p style={{ fontSize: '0.75rem', color: '#8b7b5a', marginBottom: '1rem', flex: 1, lineHeight: 1.5 }}>
-                Play cards face-down, claim they're the target. Get caught? Face the revolver.
+              <h3 style={{ fontSize: '1.3rem', color: '#c9a84c', marginBottom: '0.4rem' }}>Basic Mode</h3>
+              <p style={{ fontSize: '0.75rem', color: '#8b7b5a', marginBottom: '0.5rem', lineHeight: 1.5 }}>
+                5 cards each — Ace, King, Queen, Joker. Play face-down claiming they're the target. Jokers are always wild. Get caught lying? Face the revolver.
               </p>
+              <p style={{ fontSize: '0.65rem', color: '#5a4a3a', marginBottom: '1rem', flex: 1 }}>4 players · USDC stakes · FHE-encrypted hands</p>
               <button className="btn green" style={{ width: '100%', fontSize: '1rem', padding: '0.7rem' }} onClick={() => navigate('/lobby')}>
                 PLAY NOW
               </button>
             </div>
           </div>
 
-          {/* Dice */}
-          <div style={{ borderRadius: '0.75rem', background: '#1a110d', padding: '1.5rem', border: '1px solid #3a2a1a', opacity: 0.7, display: 'flex', flexDirection: 'column' }}>
-            <div style={{ marginBottom: '1rem' }}><span style={{ border: '1px solid #3a2a1a', color: '#8b7b5a', padding: '0.2rem 0.6rem', fontSize: '0.65rem', letterSpacing: '0.1em' }}>LOCKED</span></div>
-            <div style={{ width: '100%', aspectRatio: '4/3', background: '#251f12', borderRadius: '0.5rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <img src="/dice.png" alt="Dice" style={{ width: '60%', objectFit: 'contain', opacity: 0.7 }} />
+          {/* Devil Mode — LIVE */}
+          <div style={{ position: 'relative', borderRadius: '0.75rem', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', inset: -2, background: 'linear-gradient(to bottom, #e94560, #8b1a1a)', borderRadius: '0.85rem', opacity: 0.6, filter: 'blur(2px)' }} />
+            <div style={{ position: 'relative', background: '#1a110d', borderRadius: '0.75rem', padding: '1.5rem', border: '1px solid rgba(233,69,96,0.3)', boxShadow: '0 0 20px rgba(233,69,96,0.15)', display: 'flex', flexDirection: 'column', height: '100%' }}>
+              <div style={{ marginBottom: '1rem' }}>
+                <span style={{ background: '#e94560', color: '#fff', padding: '0.2rem 0.6rem', fontSize: '0.7rem', fontWeight: 'bold', letterSpacing: '0.1em' }}>LIVE</span>
+              </div>
+              <div style={{ width: '100%', aspectRatio: '4/3', background: '#251f12', borderRadius: '0.5rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ display: 'flex' }}>
+                  {['king1', 'devil1', 'queen1'].map((c, i) => (
+                    <div key={i} className="playing-card" style={{ backgroundImage: `url(/playing_card/${c}.png)`, width: '3.5rem', transform: `rotate(${(i-1)*8}deg)`, marginLeft: i > 0 ? '-1rem' : 0 }} />
+                  ))}
+                </div>
+              </div>
+              <h3 style={{ fontSize: '1.3rem', color: '#e94560', marginBottom: '0.4rem' }}>Devil Mode</h3>
+              <p style={{ fontSize: '0.75rem', color: '#8b7b5a', marginBottom: '0.5rem', lineHeight: 1.5 }}>
+                One Devil card lurks among 20. Play it alone and force every other player to face the barrel simultaneously. The Devil player is safe.
+              </p>
+              <p style={{ fontSize: '0.65rem', color: '#5a4a3a', marginBottom: '1rem', flex: 1 }}>4 players · Devil retribution · Multi-spin chaos</p>
+              <button className="btn" style={{ width: '100%', fontSize: '1rem', padding: '0.7rem', borderColor: '#e94560', color: '#e94560' }} onClick={() => navigate('/lobby?mode=devil')}>
+                PLAY NOW
+              </button>
             </div>
-            <h3 style={{ fontSize: '1.3rem', color: '#8b7b5a', marginBottom: '0.4rem' }}>Dice and Barrel</h3>
-            <p style={{ fontSize: '0.75rem', color: '#5a4a3a', marginBottom: '1rem', flex: 1 }}>Roll the bones. Trust no one. The ultimate game of probability and deception.</p>
-            <button className="btn" style={{ width: '100%', opacity: 0.4, cursor: 'not-allowed' }} disabled>COMING SOON</button>
           </div>
 
-          {/* Slots */}
-          <div style={{ borderRadius: '0.75rem', background: '#1a110d', padding: '1.5rem', border: '1px solid #3a2a1a', opacity: 0.7, display: 'flex', flexDirection: 'column' }}>
-            <div style={{ marginBottom: '1rem' }}><span style={{ border: '1px solid #3a2a1a', color: '#8b7b5a', padding: '0.2rem 0.6rem', fontSize: '0.65rem', letterSpacing: '0.1em' }}>LOCKED</span></div>
-            <div style={{ width: '100%', aspectRatio: '4/3', background: '#251f12', borderRadius: '0.5rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <img src="/slot-machine.png" alt="Slots" style={{ width: '60%', objectFit: 'contain', opacity: 0.7 }} />
+          {/* Chaos Mode — LIVE */}
+          <div style={{ position: 'relative', borderRadius: '0.75rem', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', inset: -2, background: 'linear-gradient(to bottom, #a855f7, #6b1a8b)', borderRadius: '0.85rem', opacity: 0.6, filter: 'blur(2px)' }} />
+            <div style={{ position: 'relative', background: '#1a110d', borderRadius: '0.75rem', padding: '1.5rem', border: '1px solid rgba(168,85,247,0.3)', boxShadow: '0 0 20px rgba(168,85,247,0.15)', display: 'flex', flexDirection: 'column', height: '100%' }}>
+              <div style={{ marginBottom: '1rem' }}>
+                <span style={{ background: '#a855f7', color: '#fff', padding: '0.2rem 0.6rem', fontSize: '0.7rem', fontWeight: 'bold', letterSpacing: '0.1em' }}>LIVE</span>
+              </div>
+              <div style={{ width: '100%', aspectRatio: '4/3', background: '#251f12', borderRadius: '0.5rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ display: 'flex' }}>
+                  {['master1', 'chaos1', 'king1'].map((c, i) => (
+                    <div key={i} className="playing-card" style={{ backgroundImage: `url(/playing_card/${c}.png)`, width: '3.5rem', transform: `rotate(${(i-1)*8}deg)`, marginLeft: i > 0 ? '-1rem' : 0 }} />
+                  ))}
+                </div>
+              </div>
+              <h3 style={{ fontSize: '1.3rem', color: '#a855f7', marginBottom: '0.4rem' }}>Chaos Mode</h3>
+              <p style={{ fontSize: '0.75rem', color: '#8b7b5a', marginBottom: '0.5rem', lineHeight: 1.5 }}>
+                3 cards each — King, Queen, Master, Chaos. Winners shoot opponents. The Master flips blame. The Chaos card triggers a simultaneous all-player firefight.
+              </p>
+              <p style={{ fontSize: '0.65rem', color: '#5a4a3a', marginBottom: '1rem', flex: 1 }}>4 players · Target shooting · Chaos trigger</p>
+              <button className="btn" style={{ width: '100%', fontSize: '1rem', padding: '0.7rem', borderColor: '#a855f7', color: '#a855f7' }} onClick={() => navigate('/lobby?mode=chaos')}>
+                PLAY NOW
+              </button>
             </div>
-            <h3 style={{ fontSize: '1.3rem', color: '#8b7b5a', marginBottom: '0.4rem' }}>Slot and Barrel</h3>
-            <p style={{ fontSize: '0.75rem', color: '#5a4a3a', marginBottom: '1rem', flex: 1 }}>Pull the lever. Lie about your hearts. The cryptographic gods decide your fate.</p>
-            <button className="btn" style={{ width: '100%', opacity: 0.4, cursor: 'not-allowed' }} disabled>COMING SOON</button>
           </div>
+
         </section>
 
         {/* Built on Zama fhEVM */}
-        <section style={{ padding: '3rem 2rem', background: '#1a110d', borderRadius: '0.75rem', border: '1px solid rgba(184,115,51,0.2)', position: 'relative', overflow: 'hidden', marginBottom: '3rem', isolation: 'auto' }}>
+        <section style={{ padding: '3rem 2rem', background: '#1a110d', borderRadius: '0.75rem', border: '1px solid rgba(184,115,51,0.2)', position: 'relative', overflow: 'hidden', marginBottom: '3rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '1rem' }}>
             <div style={{ width: 32, height: 32, background: 'linear-gradient(135deg, #c9a84c, #8a6420)', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <span style={{ fontSize: '1rem' }}>🔐</span>
@@ -133,10 +164,15 @@ export default function Landing() {
             <h2 style={{ fontSize: '1.5rem', color: '#c9a84c' }}>Built on Zama fhEVM</h2>
           </div>
           <p style={{ color: '#8b7b5a', fontSize: '0.85rem', maxWidth: 600, lineHeight: 1.7, marginBottom: '2rem' }}>
-            Traditional on-chain games are limited by public state. Bluff and Barrel leverages Zama fhEVM to provide truly private hands, encrypted bullets, and hidden bluffs — on Ethereum Sepolia.
+            Every card in your hand is an encrypted <code style={{ color: '#c9a84c', fontSize: '0.8rem' }}>euint8</code> on-chain — invisible to opponents, the contract, and even the chain itself until challenge. The bullet position in each revolver chamber is generated by Zama's FHE coprocessor and never exposed as plaintext.
           </p>
           <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
-            {['End-to-End Encryption', 'Hidden On-Chain State', 'Instant Reveal', 'Provably Fair'].map((label, i) => (
+            {[
+              'FHE-Encrypted Cards',
+              'Hidden Bullet Position',
+              'KMS-Verified Results',
+              'Ethereum Sepolia',
+            ].map((label, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <span style={{ color: '#c9a84c', fontSize: '0.9rem' }}>●</span>
                 <span style={{ fontSize: '0.7rem', color: '#8b7b5a', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{label}</span>
@@ -158,6 +194,7 @@ export default function Landing() {
             <a href="/roadmap" style={{ fontSize: '0.75rem', color: '#c9a84c', textDecoration: 'none', letterSpacing: '0.1em' }}>ROADMAP</a>
           </div>
         </footer>
+
       </div>
     </div>
   );
