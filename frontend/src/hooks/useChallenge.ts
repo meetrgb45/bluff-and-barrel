@@ -17,6 +17,7 @@ export function useChallenge() {
   const { writeContractAsync } = useWriteContract();
   const gameId = useGameStore((s) => s.gameId);
   const gameMode = useGameStore((s) => s.gameMode);
+  const setRevealedCards = useGameStore((s) => s.setRevealedCards);
   const [resolving, setResolving] = useState(false);
 
   // useDecryptPublicValues: mutation hook for publicly decryptable FHE values.
@@ -52,6 +53,24 @@ export function useChallenge() {
           args: [BigInt(gameId), allValid, results.abiEncodedClearValues, results.decryptionProof],
           ...(await gasFor('publishChallengeResult', publicClient)),
         });
+
+        // Step 4: Decrypt played cards client-side — no on-chain tx, purely for display.
+        // revealHandles were set by callLiar (deck.revealCards → makePubliclyDecryptable).
+        try {
+          const handles = await publicClient.readContract({
+            address: contractAddr, abi,
+            functionName: 'getRevealHandles',
+            args: [BigInt(gameId)],
+          }) as `0x${string}`[];
+
+          if (handles?.length) {
+            const cardResults = await decryptPublicValues.mutateAsync(handles);
+            const cards = handles.map(h => Number(cardResults.clearValues[h]));
+            setRevealedCards(cards);
+          }
+        } catch (e) {
+          console.warn('[challenge] card reveal decrypt failed (non-fatal):', e);
+        }
 
         setResolving(false);
         return;

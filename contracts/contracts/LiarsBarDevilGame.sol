@@ -34,10 +34,12 @@ contract LiarsBarDevilGame is ZamaEthereumConfig {
         uint8 targetCard;
         uint8 currentTurnIndex;
         uint8 aliveCount;
+        bool pendingIsDoubleSpin;
         Player[4] players;
         address lastClaimant;
         uint8 lastClaimCount;
-        uint8[] lastPlayedIndices;
+        uint8[3] lastPlayedIndices;
+        uint8 lastPlayedCount;
         bytes32 pendingChallengeHandle;
         address pendingSpinner;
         address[] pendingSpinners;
@@ -54,10 +56,8 @@ contract LiarsBarDevilGame is ZamaEthereumConfig {
     mapping(uint256 => Game) public games;
     uint256 public nextGameId;
     mapping(uint256 => bytes32[]) public revealHandles;
-    mapping(uint256 => uint8[]) public revealedCards;
     mapping(uint256 => mapping(address => bytes32)) public multiSpinHandles;
 
-    event CardsRevealed(uint256 indexed gameId, uint8[] cardValues);
     event MultiSpinTriggered(uint256 indexed gameId);
 
     LiarsBarDevilDeck public deck;
@@ -106,7 +106,9 @@ contract LiarsBarDevilGame is ZamaEthereumConfig {
         require(g.state == GameState.PlayerTurn && msg.sender == g.players[g.currentTurnIndex].addr, "Not your turn");
         require(indices.length >= 1 && indices.length <= 3, "Invalid count");
         deck.markCardsPlayed(gameId * 100 + g.round, msg.sender, indices);
-        g.lastClaimant = msg.sender; g.lastClaimCount = uint8(indices.length); g.lastPlayedIndices = indices;
+        g.lastClaimant = msg.sender; g.lastClaimCount = uint8(indices.length);
+        g.lastPlayedCount = uint8(indices.length);
+        for (uint8 i = 0; i < indices.length; i++) g.lastPlayedIndices[i] = indices[i];
         emit CardsPlayed(gameId, msg.sender, uint8(indices.length));
         _advanceTurn(gameId);
     }
@@ -117,10 +119,13 @@ contract LiarsBarDevilGame is ZamaEthereumConfig {
         require(g.lastClaimant != address(0) && g.lastClaimant != msg.sender, "Nothing to challenge");
         g.state = GameState.Challenging; g.turnDeadline = block.timestamp + TURN_TIMEOUT;
 
-        bytes32[] memory handles = deck.revealCards(gameId * 100 + g.round, g.lastClaimant, g.lastPlayedIndices);
-        revealHandles[gameId] = handles; delete revealedCards[gameId];
+        uint8[] memory indices = new uint8[](g.lastPlayedCount);
+        for (uint8 i = 0; i < g.lastPlayedCount; i++) indices[i] = g.lastPlayedIndices[i];
 
-        bytes32 ch = deck.verifyClaim(gameId * 100 + g.round, g.lastClaimant, g.lastPlayedIndices, g.targetCard);
+        bytes32[] memory handles = deck.revealCards(gameId * 100 + g.round, g.lastClaimant, indices);
+        revealHandles[gameId] = handles;
+
+        bytes32 ch = deck.verifyClaim(gameId * 100 + g.round, g.lastClaimant, indices, g.targetCard);
         FHE.makePubliclyDecryptable(ebool.wrap(ch));
         g.pendingChallengeHandle = ch;
         emit LiarCalled(gameId, msg.sender, g.lastClaimant);
@@ -131,47 +136,45 @@ contract LiarsBarDevilGame is ZamaEthereumConfig {
         require(g.state == GameState.Challenging && _isParticipant(gameId, msg.sender), "Invalid");
         bytes32[] memory h = new bytes32[](1); h[0] = g.pendingChallengeHandle;
         FHE.checkSignatures(h, abiEncoded, proof);
+        g.pendingChallengeHandle = bytes32(0);
+        g.turnDeadline = block.timestamp + TURN_TIMEOUT;
 
         if (allValid) {
+            // Accuser was wrong — accuser spins
             g.pendingSpinner = g.players[g.currentTurnIndex].addr;
-            g.state = GameState.Spinning; g.pendingChallengeHandle = bytes32(0);
-            g.turnDeadline = block.timestamp + TURN_TIMEOUT;
+            g.state = GameState.Spinning;
             g.pendingSpinHandle = revolver.beginSpin(gameId, g.pendingSpinner);
             emit ChallengeResolved(gameId, false, g.pendingSpinner);
             emit SpinTriggered(gameId, g.pendingSpinner, false);
         } else {
+            // Accused lied — they spin (or MultiSpin if Devil card detected client-side)
+            // Frontend decrypts reveal handles to check for Devil card.
+            // If Devil card found: call triggerMultiSpin(). Otherwise spin resolves normally.
+            g.pendingSpinner = g.lastClaimant;
+            g.state = GameState.Spinning;
+            g.pendingSpinHandle = revolver.beginSpin(gameId, g.lastClaimant);
             emit ChallengeResolved(gameId, true, g.lastClaimant);
-            // publishCardReveal decides Spinning vs MultiSpinning
+            emit SpinTriggered(gameId, g.lastClaimant, false);
         }
     }
 
-    function publishCardReveal(uint256 gameId, uint8[] calldata cardValues, bytes calldata abiEncoded, bytes calldata proof) external {
+    /**
+     * @notice Trigger MultiSpinning when a Devil card was played.
+     *         Frontend detects Devil in decrypted reveal handles and calls this.
+     */
+    function triggerMultiSpin(uint256 gameId) external {
         Game storage g = games[gameId];
-        require(g.state == GameState.Challenging, "Not challenging");
-        bytes32[] memory h = revealHandles[gameId];
-        require(h.length == cardValues.length, "Length mismatch");
-        FHE.checkSignatures(h, abiEncoded, proof);
-
-        bool hasDevil = false;
-        for (uint256 i = 0; i < cardValues.length; i++) if (cardValues[i] == 4) hasDevil = true;
-        revealedCards[gameId] = cardValues;
-        emit CardsRevealed(gameId, cardValues);
-        g.pendingChallengeHandle = bytes32(0); g.turnDeadline = block.timestamp + TURN_TIMEOUT;
-
-        if (hasDevil) {
-            g.state = GameState.MultiSpinning; delete g.pendingSpinners; g.spinsResolved = 0;
-            for (uint8 i = 0; i < 4; i++) {
-                if (g.players[i].alive && g.players[i].addr != g.lastClaimant) {
-                    g.pendingSpinners.push(g.players[i].addr);
-                    multiSpinHandles[gameId][g.players[i].addr] = revolver.beginSpin(gameId, g.players[i].addr);
-                }
+        require(g.state == GameState.Spinning, "Not spinning");
+        require(_isParticipant(gameId, msg.sender), "Not participant");
+        g.state = GameState.MultiSpinning;
+        delete g.pendingSpinners; g.spinsResolved = 0;
+        for (uint8 i = 0; i < 4; i++) {
+            if (g.players[i].alive && g.players[i].addr != g.lastClaimant) {
+                g.pendingSpinners.push(g.players[i].addr);
+                multiSpinHandles[gameId][g.players[i].addr] = revolver.beginSpin(gameId, g.players[i].addr);
             }
-            emit MultiSpinTriggered(gameId);
-        } else {
-            g.pendingSpinner = g.lastClaimant; g.state = GameState.Spinning;
-            g.pendingSpinHandle = revolver.beginSpin(gameId, g.lastClaimant);
-            emit SpinTriggered(gameId, g.lastClaimant, false);
         }
+        emit MultiSpinTriggered(gameId);
     }
 
     function publishSpinResult(uint256 gameId, bool fired, bytes calldata abiEncoded, bytes calldata proof) external {
@@ -241,7 +244,6 @@ contract LiarsBarDevilGame is ZamaEthereumConfig {
     function getPendingChallengeHandle(uint256 gameId) external view returns (bytes32) { return games[gameId].pendingChallengeHandle; }
     function getPendingSpinHandle(uint256 gameId) external view returns (bytes32) { return games[gameId].pendingSpinHandle; }
     function getRevealHandles(uint256 gameId) external view returns (bytes32[] memory) { return revealHandles[gameId]; }
-    function getRevealedCards(uint256 gameId) external view returns (uint8[] memory) { return revealedCards[gameId]; }
     function getPendingSpinners(uint256 gameId) external view returns (address[] memory) { return games[gameId].pendingSpinners; }
     function getMultiSpinHandle(uint256 gameId, address player) external view returns (bytes32) { return multiSpinHandles[gameId][player]; }
 
@@ -250,8 +252,9 @@ contract LiarsBarDevilGame is ZamaEthereumConfig {
         Game storage g = games[gameId];
         g.round++;
         g.targetCard = uint8(uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, gameId, g.round))) % 3);
-        g.lastClaimant = address(0); g.lastClaimCount = 0; delete g.lastPlayedIndices;
+        g.lastClaimant = address(0); g.lastClaimCount = 0; g.lastPlayedCount = 0;
         g.pendingSpinner = address(0); delete g.pendingSpinners; g.spinsResolved = 0;
+        delete revealHandles[gameId];
         address[4] memory dealTo;
         for (uint8 i = 0; i < 4; i++) dealTo[i] = g.players[i].alive ? g.players[i].addr : address(0);
         deck.initDeal(gameId * 100 + g.round, dealTo, g.targetCard);

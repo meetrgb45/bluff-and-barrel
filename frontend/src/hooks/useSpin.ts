@@ -52,7 +52,7 @@ export function useSpin() {
         const results = await decryptPublicValues.mutateAsync([spinHandle]);
         const fired = Boolean(results.clearValues[spinHandle]);
 
-        // Step 3: Submit proof on-chain → publishSpinResult verifies via FHE.checkSignatures
+        // Step 3: Submit proof on-chain — wait for confirmation before revealing outcome
         await writeContractAsync({
           address: gameAddr, abi,
           functionName: 'publishSpinResult',
@@ -60,6 +60,7 @@ export function useSpin() {
           ...(await gasFor('publishSpinResult', publicClient)),
         });
 
+        // Only show outcome AFTER the tx is confirmed on-chain
         setOutcome(fired ? 'bang' : 'click');
         setSpinning(false);
         return;

@@ -55,6 +55,7 @@ export default function GameRoom() {
   const lastClaimant = useGameStore((s) => s.lastClaimant);
   const lastClaimCount = useGameStore((s) => s.lastClaimCount);
   const chamberPointers = useGameStore((s) => s.chamberPointers);
+  const pendingSpinner = useGameStore((s) => s.pendingSpinner);
   const resetPlayedCards = useGameStore((s) => s.resetPlayedCards);
 
   const myPlayer = players.find((p) => p.addr?.toLowerCase() === address?.toLowerCase());
@@ -119,27 +120,12 @@ export default function GameRoom() {
   }, [fhevmReady, state, round, decryptHand, myPlayer?.alive]);
 
   const iAmChallenger = players[currentTurnIndex]?.addr?.toLowerCase() === address?.toLowerCase();
-  useEffect(() => {
-    if (state === 'Challenging' && fhevmReady && iAmChallenger && !challengeResolvedRef.current) {
-      challengeResolvedRef.current = true;
-      setTimeout(resolveChallenge, 3000);
-    }
-    // Non-accuser: if we detect Challenging state and overlay isn't showing, show it
-    if (state === 'Challenging' && !challengePhase) {
-      const accuserIdx = currentTurnIndex;
-      const accusedIdx = players.findIndex(p => p.addr?.toLowerCase() === lastClaimant?.toLowerCase());
-      setChallengeAccuser(accuserIdx);
-      setChallengeAccused(accusedIdx >= 0 ? accusedIdx : 0);
-      setChallengePhase('revealing');
-      // Hard timeout: dismiss after 30s if still stuck
-      setTimeout(() => {
-        if (useGameStore.getState().state === 'Challenging') setChallengePhase(null);
-      }, 30000);
-    }
-  }, [state, fhevmReady, iAmChallenger, resolveChallenge, challengePhase, currentTurnIndex, lastClaimant, players]);
 
-  // Drive challenge overlay phases based on state transitions
+  // ─── Challenge phase controller ───────────────────────────────────────────
+  // Single effect that drives phases in strict sequence, one at a time.
+  // Prevents overlaps: accusation → revealing → verdict → null
   useEffect(() => {
+    // Step 1: PlayerTurn → Challenging: start accusation phase
     if (prevStateRef.current === 'PlayerTurn' && state === 'Challenging') {
       const accuserIdx = currentTurnIndex;
       const accusedIdx = players.findIndex(p => p.addr?.toLowerCase() === lastClaimant?.toLowerCase());
@@ -147,35 +133,54 @@ export default function GameRoom() {
       setChallengeAccused(accusedIdx >= 0 ? accusedIdx : 0);
       setChallengePhase('accusation');
       sounds.gong();
-      setTimeout(() => { setChallengePhase('revealing'); sounds.cardFlip(); }, 2000);
+
+      // After accusation beats, auto-trigger resolve if I'm the challenger
+      setTimeout(() => {
+        setChallengePhase('revealing');
+        sounds.cardFlip();
+        // Auto-trigger challenge resolution for the accuser
+        if (!challengeResolvedRef.current && iAmChallenger) {
+          challengeResolvedRef.current = true;
+          setTimeout(resolveChallenge, 1500);
+        }
+      }, 2000);
     }
-    if ((prevStateRef.current === 'Challenging' && state === 'Spinning') ||
-        (challengePhase === 'revealing' && state === 'Spinning')) {
-      // Wait for revealedCards before showing verdict (max 12s timeout)
-      let attempts = 0;
-      const waitForReveal = () => {
-        attempts++;
+
+    // Step 2: Challenging → Spinning: show verdict once card reveal data arrives
+    if (prevStateRef.current === 'Challenging' && state === 'Spinning') {
+      const currentPendingSpinner = useGameStore.getState().pendingSpinner;
+      const currentLastClaimant  = useGameStore.getState().lastClaimant;
+      const spinnerIsAccused = currentPendingSpinner?.toLowerCase() === currentLastClaimant?.toLowerCase();
+      const verdictPhase = spinnerIsAccused ? 'verdict-lie' : 'verdict-valid';
+
+      // Wait for revealedCards to arrive (set by useChallenge after publicDecrypt)
+      // then show verdict. Fallback: show after 2s regardless.
+      let waited = 0;
+      const waitForCards = () => {
         const cards = useGameStore.getState().revealedCards;
-        if (cards.length > 0) {
-          const pendingSpinner = useGameStore.getState().pendingSpinner;
-          const spinnerIsAccused = pendingSpinner?.toLowerCase() === players[challengeAccused]?.addr?.toLowerCase();
-          setChallengePhase(spinnerIsAccused ? 'verdict-lie' : 'verdict-valid');
+        if (cards.length > 0 || waited >= 8) {
+          setChallengePhase(verdictPhase);
           setTimeout(() => setChallengePhase(null), 4000);
-        } else if (attempts < 12) {
-          setTimeout(waitForReveal, 1000);
         } else {
-          // Timeout — dismiss overlay so game isn't stuck
-          setChallengePhase(null);
+          waited++;
+          setTimeout(waitForCards, 500);
         }
       };
-      waitForReveal();
+      waitForCards();
     }
-    // If state moved past Spinning and overlay is still showing, dismiss it
-    if ((state === 'PlayerTurn' || state === 'GameOver' || state === 'MultiSpinning' || state === 'Targeting' || state === 'MultiTargeting' || state === 'Shooting') && challengePhase) {
+
+    // Step 3: Clear overlay whenever we leave challenge/spin territory
+    if (
+      state === 'PlayerTurn' || state === 'Dealing' ||
+      state === 'GameOver' || state === 'MultiSpinning' ||
+      state === 'Targeting' || state === 'MultiTargeting' || state === 'Shooting'
+    ) {
       setChallengePhase(null);
     }
+
     prevStateRef.current = state;
-  }, [state, currentTurnIndex, lastClaimant, players, challengeAccused, challengePhase]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
 
   const isMyTurn = players[currentTurnIndex]?.addr?.toLowerCase() === address?.toLowerCase();
   const playerCount = players.filter((p) => p.addr !== '0x0000000000000000000000000000000000000000').length;
@@ -275,7 +280,7 @@ export default function GameRoom() {
 
   return (
     <div style={{ width: '100%', height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <SpinAnimation outcome={outcome} spinning={spinning} onDismiss={clearOutcome} />
+      <SpinAnimation outcome={outcome} spinning={spinning && !challengePhase} onDismiss={clearOutcome} />
       <ChallengeOverlay phase={challengePhase} accuserIndex={challengeAccuser} accusedIndex={challengeAccused} onDismiss={() => setChallengePhase(null)} />
 
       {/* Nav */}

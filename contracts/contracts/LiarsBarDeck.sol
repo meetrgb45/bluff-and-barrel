@@ -151,6 +151,14 @@ contract LiarsBarDeck is ZamaEthereumConfig {
         return FHE.toBytes32(all);
     }
 
+    function revealCards(uint256 rid, address player, uint8[] calldata indices) external onlyGame returns (bytes32[] memory h) {
+        h = new bytes32[](indices.length);
+        for (uint8 i = 0; i < indices.length; i++) {
+            FHE.makePubliclyDecryptable(_hands[rid][player][indices[i]]);
+            h[i] = FHE.toBytes32(_hands[rid][player][indices[i]]);
+        }
+    }
+
     function getHandHashes(uint256 rid, address player) external view returns (bytes32[5] memory h) {
         for (uint8 i = 0; i < HAND_SIZE; i++) h[i] = FHE.toBytes32(_hands[rid][player][i]);
     }

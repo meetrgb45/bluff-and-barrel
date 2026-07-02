@@ -3,16 +3,16 @@
   "chainId": 11155111,
   "deployer": "0x3Ba01A7992ecB412709F945D633577f116E85250",
   "contracts": {
-    "LiarsBarRevolver":  "0xA3420AaC92888b2f8ee69af03c0943c2A0746192",
-    "LiarsBarDeck":      "0x26EaacD58C550562A15F8849D77952Fe4B90AdA3",
-    "LiarsBarGame":      "0x6095B5f82E4C2c7a1462c58830E26380f52Ae2da",
-    "LiarsBarDevilDeck": "0x4cD88c69d6cb0C7CDE8aF9c43f1035Fcc7E74818",
-    "LiarsBarDevilGame": "0x85bcE43026505DC48185C1e07E200BEa11667442",
-    "LiarsBarChaosDeck": "0x0b1dBC98A1c8a77d031e689eCa606CB342D6ab11",
-    "LiarsBarChaosGame": "0x3C7b6B93E8fc5891A55AE683eD37A465Dc49cFDb",
+    "LiarsBarRevolver":  "0x92be89Da8D869B2e57C4A0CA027b35735e9BF484",
+    "LiarsBarDeck":      "0xA34345bBA0AcB2fd69323B41d66902201C635102",
+    "LiarsBarGame":      "0xF4605cCd9a48f46a4AfD9d976b70386DccFC40F7",
+    "LiarsBarDevilDeck": "0x8E0603b91813a745f224858590a41F403e61CDf0",
+    "LiarsBarDevilGame": "0xc4069f5Bb67aB8f59F98AdBf2d3787b2Cf7201E6",
+    "LiarsBarChaosDeck": "0x298a552447f1aCe190B545D16503126b41092131",
+    "LiarsBarChaosGame": "0xe47942b6028Dc5F5f729b5Da5e07BD880be11b9A",
     "USDC":              "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
   },
-  "deployedAt": "2026-07-01",
+  "deployedAt": "2026-07-02",
   "fhe": "Zama fhEVM — @fhevm/solidity ^0.11.1",
-  "notes": "Basic mode redeployed: removed on-chain card reveal (publishCardReveal, revealHandles, revealedCards), packed Game struct (uint8[3] lastPlayedIndices, bool pendingIsDoubleSpin moved), removed chamberPointer polling. Devil/Chaos on old addresses pending redeploy."
+  "notes": "Full redeploy all 3 modes. DevilGame: removed publishCardReveal, added triggerMultiSpin for Devil card detection client-side. All game contracts: uint8[3] lastPlayedIndices fixed array, packed structs, revealHandles restored for client-side card display."
 }

@@ -57,6 +57,9 @@ contract LiarsBarGame is ZamaEthereumConfig, ILiarsBarGame {
     IERC20 public usdc;
     address public treasury;
 
+    // Card reveal handles — set by callLiar so accuser can publicDecrypt client-side
+    mapping(uint256 => bytes32[]) public revealHandles;
+
     constructor(address _deck, address _revolver, address _usdc, address _treasury) {
         deck = LiarsBarDeck(_deck);
         revolver = LiarsBarRevolver(_revolver);
@@ -132,7 +135,11 @@ contract LiarsBarGame is ZamaEthereumConfig, ILiarsBarGame {
         uint8[] memory indices = new uint8[](g.lastPlayedCount);
         for (uint8 i = 0; i < g.lastPlayedCount; i++) indices[i] = g.lastPlayedIndices[i];
 
-        // Compute challenge result encrypted — no card reveal on-chain
+        // Mark played cards publicly decryptable so accuser can reveal them client-side
+        bytes32[] memory handles = deck.revealCards(gameId * 100 + g.round, g.lastClaimant, indices);
+        revealHandles[gameId] = handles;
+
+        // Compute challenge result encrypted
         bytes32 challengeHandle = deck.verifyClaim(gameId * 100 + g.round, g.lastClaimant, indices, g.targetCard);
         FHE.makePubliclyDecryptable(ebool.wrap(challengeHandle));
         g.pendingChallengeHandle = challengeHandle;
@@ -311,6 +318,7 @@ contract LiarsBarGame is ZamaEthereumConfig, ILiarsBarGame {
     function getStakeAmount(uint256 gameId) external view returns (uint256) { return games[gameId].stakeAmount; }
     function getPendingChallengeHandle(uint256 gameId) external view returns (bytes32) { return games[gameId].pendingChallengeHandle; }
     function getPendingSpinHandle(uint256 gameId) external view returns (bytes32) { return games[gameId].pendingSpinHandle; }
+    function getRevealHandles(uint256 gameId) external view returns (bytes32[] memory) { return revealHandles[gameId]; }
 
     // ─── Internal ─────────────────────────────────────────────────────────
 
@@ -328,6 +336,7 @@ contract LiarsBarGame is ZamaEthereumConfig, ILiarsBarGame {
         g.lastPlayedCount = 0;
         g.pendingSpinner = address(0);
         g.pendingIsDoubleSpin = false;
+        delete revealHandles[gameId];
         g.currentTurnIndex = _nextAliveIndex(g, type(uint8).max);
         g.state = GameState.Dealing;
         g.turnDeadline = block.timestamp + TURN_TIMEOUT;

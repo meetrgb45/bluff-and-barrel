@@ -10,13 +10,13 @@
 
 // ─── Addresses ────────────────────────────────────────────────────────────────
 
-export const GAME_ADDRESS         = (import.meta.env.VITE_GAME_ADDRESS         || '0x6095B5f82E4C2c7a1462c58830E26380f52Ae2da') as `0x${string}`;
-export const DECK_ADDRESS         = (import.meta.env.VITE_DECK_ADDRESS         || '0x26EaacD58C550562A15F8849D77952Fe4B90AdA3') as `0x${string}`;
-export const REVOLVER_ADDRESS     = (import.meta.env.VITE_REVOLVER_ADDRESS     || '0xA3420AaC92888b2f8ee69af03c0943c2A0746192') as `0x${string}`;
-export const DEVIL_GAME_ADDRESS   = (import.meta.env.VITE_DEVIL_GAME_ADDRESS   || '0x85bcE43026505DC48185C1e07E200BEa11667442') as `0x${string}`;
-export const DEVIL_DECK_ADDRESS   = (import.meta.env.VITE_DEVIL_DECK_ADDRESS   || '0x4cD88c69d6cb0C7CDE8aF9c43f1035Fcc7E74818') as `0x${string}`;
-export const CHAOS_GAME_ADDRESS   = (import.meta.env.VITE_CHAOS_GAME_ADDRESS   || '0x3C7b6B93E8fc5891A55AE683eD37A465Dc49cFDb') as `0x${string}`;
-export const CHAOS_DECK_ADDRESS   = (import.meta.env.VITE_CHAOS_DECK_ADDRESS   || '0x0b1dBC98A1c8a77d031e689eCa606CB342D6ab11') as `0x${string}`;
+export const GAME_ADDRESS         = (import.meta.env.VITE_GAME_ADDRESS         || '0xF4605cCd9a48f46a4AfD9d976b70386DccFC40F7') as `0x${string}`;
+export const DECK_ADDRESS         = (import.meta.env.VITE_DECK_ADDRESS         || '0xA34345bBA0AcB2fd69323B41d66902201C635102') as `0x${string}`;
+export const REVOLVER_ADDRESS     = (import.meta.env.VITE_REVOLVER_ADDRESS     || '0x92be89Da8D869B2e57C4A0CA027b35735e9BF484') as `0x${string}`;
+export const DEVIL_GAME_ADDRESS   = (import.meta.env.VITE_DEVIL_GAME_ADDRESS   || '0xc4069f5Bb67aB8f59F98AdBf2d3787b2Cf7201E6') as `0x${string}`;
+export const DEVIL_DECK_ADDRESS   = (import.meta.env.VITE_DEVIL_DECK_ADDRESS   || '0x8E0603b91813a745f224858590a41F403e61CDf0') as `0x${string}`;
+export const CHAOS_GAME_ADDRESS   = (import.meta.env.VITE_CHAOS_GAME_ADDRESS   || '0xe47942b6028Dc5F5f729b5Da5e07BD880be11b9A') as `0x${string}`;
+export const CHAOS_DECK_ADDRESS   = (import.meta.env.VITE_CHAOS_DECK_ADDRESS   || '0x298a552447f1aCe190B545D16503126b41092131') as `0x${string}`;
 export const USDC_ADDRESS         = (import.meta.env.VITE_USDC_ADDRESS         || '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238') as `0x${string}`;
 
 // ─── ABIs (from compiled artifacts) ──────────────────────────────────────────
