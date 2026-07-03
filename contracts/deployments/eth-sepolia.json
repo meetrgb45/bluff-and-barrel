@@ -3,16 +3,17 @@
   "chainId": 11155111,
   "deployer": "0x3Ba01A7992ecB412709F945D633577f116E85250",
   "contracts": {
-    "LiarsBarRevolver":  "0x05124ab1fE9a87DEcbDCCcA4Ee53569F390cA793",
-    "LiarsBarDeck":      "0x3cE4d64BA8aF772D7c37066979ac170109559B93",
-    "LiarsBarGame":      "0x86B8216A3dc0eB74D66373eeF5E289d5f86574aE",
+    "LiarsBarRevolver": "0x05124ab1fE9a87DEcbDCCcA4Ee53569F390cA793",
+    "LiarsBarDeck": "0x3cE4d64BA8aF772D7c37066979ac170109559B93",
+    "LiarsBarGame": "0x86B8216A3dc0eB74D66373eeF5E289d5f86574aE",
     "LiarsBarDevilDeck": "0xd5ae9Fee299646823014Db68940c99d0236BF332",
     "LiarsBarDevilGame": "0x5EE0fc1d9E960Cc6730b9EF8077Ce7Cd26645481",
     "LiarsBarChaosDeck": "0xB5ed3491f39FEb287931e7CC912601132Ed1A1ff",
     "LiarsBarChaosGame": "0x3c071b3D5C7E2844bb3081605F6F772AA2A2e8aC",
-    "USDC":              "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+    "USDC": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
   },
   "deployedAt": "2026-07-03",
   "fhe": "Zama fhEVM — @fhevm/solidity ^0.11.1",
-  "notes": "Revolver: removed chamber exhaustion revert (clamp instead), added resetChamberPointer. Bullet position persists across rounds — same chamber loaded at startGame, pointer accumulates. Survive 5 spins = 6th guaranteed BANG."
+  "notes": "Revolver: removed chamber exhaustion revert (clamp instead), added resetChamberPointer. Bullet position persists across rounds — same chamber loaded at startGame, pointer accumulates. Survive 5 spins = 6th guaranteed BANG.",
+  "BtcMiniMarket": "0xd667317b247c54f893e62789c906624bC215E35B"
 }

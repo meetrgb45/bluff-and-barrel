@@ -11,6 +11,7 @@ import Landing from './pages/Landing';
 import Lobby from './pages/Lobby';
 import GameRoom from './pages/GameRoom';
 import Roadmap from './pages/Roadmap';
+import BtcMarket from './pages/BtcMarket';
 
 const queryClient = new QueryClient();
 
@@ -93,6 +94,8 @@ export default function App() {
                 <Route path="/" element={<Landing />} />
                 <Route path="/lobby" element={<Lobby />} />
                 <Route path="/roadmap" element={<Roadmap />} />
+                <Route path="/btc-market" element={<BtcMarket />} />
+                <Route path="/btc-market" element={<BtcMarket />} />
                 <Route path="/game/:mode/:id" element={<GameRoom />} />
               </Routes>
             </NetworkGuard>

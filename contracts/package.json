@@ -10,6 +10,8 @@
     "test": "REPORT_GAS=true hardhat test",
     "deploy:local": "hardhat run scripts/deploy.ts --network hardhat",
     "deploy:eth-sepolia": "hardhat run scripts/deploy-all.ts --network eth-sepolia",
+    "deploy:btc-market": "hardhat run scripts/deploy-btc-market.ts --network eth-sepolia",
+    "oracle": "node scripts/oracle-bot.js",
     "clean": "rimraf ./artifacts ./cache ./typechain-types"
   },
   "devDependencies": {

@@ -216,6 +216,7 @@ export default function Landing() {
             {['Discord', 'Twitter', 'GitHub'].map(link => (
               <a key={link} href="#" style={{ fontSize: '0.75rem', color: '#8b7b5a', textDecoration: 'none', letterSpacing: '0.1em' }}>{link.toUpperCase()}</a>
             ))}
+            <a href="/btc-market" style={{ fontSize: '0.75rem', color: '#8b7b5a', textDecoration: 'none', letterSpacing: '0.1em' }}>BTC MARKET</a>
             <a href="/roadmap" style={{ fontSize: '0.75rem', color: '#c9a84c', textDecoration: 'none', letterSpacing: '0.1em' }}>ROADMAP</a>
           </div>
         </footer>

@@ -19,6 +19,7 @@ const CONTRACTS = [
   'LiarsBarDevilDeck.sol/LiarsBarDevilDeck',
   'LiarsBarChaosGame.sol/LiarsBarChaosGame',
   'LiarsBarChaosDeck.sol/LiarsBarChaosDeck',
+  'BtcMiniMarket.sol/BtcMiniMarket',
 ];
 
 fs.mkdirSync(OUT_DIR, { recursive: true });

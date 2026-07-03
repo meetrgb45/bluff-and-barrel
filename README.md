@@ -87,7 +87,57 @@ Devil Deck:   0xd5ae9Fee299646823014Db68940c99d0236BF332
 Chaos Game:   0x3c071b3D5C7E2844bb3081605F6F772AA2A2e8aC
 Chaos Deck:   0xB5ed3491f39FEb287931e7CC912601132Ed1A1ff
 
+BTC 1 Min Market (beta): 0xB38104FE8D69Ac103aD423907795153630cf9a28
 ```
+
+---
+
+## BTC 1 Min Market *(Beta)*
+
+> **This is a standalone feature in beta.** It currently runs separately from the card game at `/btc-market`. Full integration into the Bluff & Barrel game loop (shield mechanic, in-game points, between-round betting) is planned for a future release.
+
+A 1-minute BTC/USD prediction market where your betting direction is **FHE-encrypted** — nobody can see whether you bet UP or DOWN until after the round ends.
+
+### How it works
+
+1. **Oracle starts a round** — the bot fetches the live BTC/USDT price from Binance and calls `startRound(price)` on-chain.
+2. **Players place bets** — select UP ▲ or DOWN ▼. The direction is encrypted client-side using `sdk.encrypt({ type: 'euint8', value })` from `@zama-fhe/sdk` before being sent to the contract. The contract stores it as a `euint8` ciphertext — even the contract cannot read it.
+3. **Round ends after 60 seconds** — the oracle calls `finalizeRound(roundId, endPrice)` and the result (UP/DOWN/TIE) is recorded on-chain.
+4. **Claim winnings** — winners call `requestClaim()` which marks their encrypted direction publicly decryptable. The frontend calls `publicDecrypt` via the Zama KMS to get the cleartext + cryptographic proof, then submits `claimWithProof()` on-chain. `FHE.checkSignatures()` verifies the KMS proof and pays out points.
+
+### Points system (testing only)
+
+Since this is a beta, there is **no real ETH at stake**. The contract uses a simple on-chain points balance:
+- Each bet costs **100 PTS**
+- Correct prediction → receive **200 PTS** back (+100 profit)
+- Wrong prediction → 100 PTS burned
+
+Points are granted by the contract owner for testing. To add points to a wallet:
+
+```bash
+cd contracts
+node scripts/add-points.js 0xYourWallet 1000
+```
+
+### Running the oracle bot
+
+The oracle bot automatically starts and finalizes 1-minute rounds by fetching the live BTC price from Binance:
+
+```bash
+cd contracts
+npm run oracle
+```
+
+The bot reads `PRIVATE_KEY`, `ETH_SEPOLIA_RPC_URL`, and `BTC_MARKET_ADDRESS` from `contracts/.env`. It polls every 10 seconds — starts a new round if none is open, finalizes and immediately restarts when a round ends.
+
+To stop it: `kill $(cat /tmp/oracle-bot.pid)`
+
+### What's coming in the full integration
+
+- Bet between rounds while waiting for your turn
+- Win points that carry over into in-game advantages (shield from a spin, extra cards)
+- Tournament mode where BTC market performance affects table buy-ins
+- On-chain price feed replacing the centralized oracle bot
 
 ---
 
@@ -127,19 +177,33 @@ Set `ETH_SEPOLIA_RPC_URL` and `PRIVATE_KEY` in `contracts/.env`.
 liarsbar2/
 ├── contracts/
 │   ├── contracts/
-│   │   ├── LiarsBarGame.sol       # Basic mode
+│   │   ├── LiarsBarGame.sol         # Basic mode
 │   │   ├── LiarsBarDeck.sol
-│   │   ├── LiarsBarDevilGame.sol  # Devil mode
+│   │   ├── LiarsBarDevilGame.sol    # Devil mode
 │   │   ├── LiarsBarDevilDeck.sol
-│   │   ├── LiarsBarChaosGame.sol  # Chaos mode
+│   │   ├── LiarsBarChaosGame.sol    # Chaos mode
 │   │   ├── LiarsBarChaosDeck.sol
-│   │   └── LiarsBarRevolver.sol   # Shared revolver
-│   └── scripts/deploy-all.ts
+│   │   ├── LiarsBarRevolver.sol     # Shared revolver
+│   │   └── BtcMiniMarket.sol        # BTC 1 Min Market (beta)
+│   └── scripts/
+│       ├── deploy-all.ts
+│       ├── deploy-btc-market.ts
+│       ├── add-points.js            # Grant test points to a wallet
+│       └── oracle-bot.js            # Auto-starts/finalizes 1-min rounds
 ├── frontend/
 │   ├── src/
-│   │   ├── pages/         # Landing, Lobby, GameRoom, Roadmap
+│   │   ├── pages/
+│   │   │   ├── Landing.tsx
+│   │   │   ├── Lobby.tsx
+│   │   │   ├── GameRoom.tsx
+│   │   │   ├── Roadmap.tsx
+│   │   │   └── BtcMarket.tsx        # /btc-market standalone page
 │   │   ├── hooks/         # useMyHand, useChallenge, useSpin, useGameState
-│   │   ├── lib/           # contracts.ts, wagmi.ts, gas.ts
+│   │   ├── lib/
+│   │   │   ├── contracts.ts
+│   │   │   ├── btcMarket.ts         # BtcMiniMarket ABI + helpers
+│   │   │   ├── wagmi.ts
+│   │   │   └── gas.ts
 │   │   └── stores/        # gameStore.ts
 └── ws-server/server.js    # WebSocket relay
 ```
