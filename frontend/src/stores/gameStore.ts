@@ -59,6 +59,8 @@ interface GameStore {
   setChamberPointers: (pointers: Record<string, number>) => void;
   setPendingSpinner: (addr: string) => void;
   setRevealedCards: (cards: number[]) => void;
+  spinOverlayActive: boolean;
+  setSpinOverlayActive: (v: boolean) => void;
 }
 
 export const useGameStore = create<GameStore>((set) => ({
@@ -119,4 +121,6 @@ export const useGameStore = create<GameStore>((set) => ({
   setChamberPointers: (pointers) => set({ chamberPointers: pointers }),
   setPendingSpinner: (addr) => set({ pendingSpinner: addr }),
   setRevealedCards: (cards) => set({ revealedCards: cards }),
+  spinOverlayActive: false,
+  setSpinOverlayActive: (v) => set({ spinOverlayActive: v }),
 }));

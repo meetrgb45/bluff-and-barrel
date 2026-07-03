@@ -112,7 +112,8 @@ export default function GameRoom() {
   const chamberPointer = useGameStore((s) => s.chamberPointer);
   const chamberPointers = useGameStore((s) => s.chamberPointers);
   const pendingSpinner = useGameStore((s) => s.pendingSpinner);
-  const resetPlayedCards = useGameStore((s) => s.resetPlayedCards);
+  const spinOverlayActive = useGameStore((s) => s.spinOverlayActive);
+  const setSpinOverlayActive = useGameStore((s) => s.setSpinOverlayActive);
 
   const myPlayer = players.find((p) => p.addr?.toLowerCase() === address?.toLowerCase());
   const myIndex = players.findIndex((p) => p.addr?.toLowerCase() === address?.toLowerCase());
@@ -194,10 +195,23 @@ export default function GameRoom() {
     return () => clearTimeout(retry);
   }, [fhevmReady, state, round, decryptHand, myPlayer?.alive]);
 
+  // Track overlay lifecycle — set active when outcome arrives, clear on dismiss
+  useEffect(() => {
+    if (outcome) {
+      setSpinOverlayActive(true);
+    }
+  }, [outcome, setSpinOverlayActive]);
+
+  const handleOutcomeDismiss = () => {
+    clearOutcome();
+    setSpinOverlayActive(false);
+  };
+
   const iAmChallenger = players[currentTurnIndex]?.addr?.toLowerCase() === address?.toLowerCase();
 
   // Block SpinAnimation from showing until verdict overlay is fully done
   const spinBlockedRef = useRef(false);
+  // spinOverlayActive lives in the store so useAutoAction can read it and pause dealing
   // All challenge-phase timers tracked so they can be cleaned up on state exit
   const challengeTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const clearChallengeTimers = () => {
@@ -382,7 +396,7 @@ export default function GameRoom() {
 
   return (
     <div style={{ width: '100%', height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <SpinAnimation outcome={outcome} spinning={spinning && !challengePhase} onDismiss={clearOutcome} blocked={spinBlockedRef.current} />
+      <SpinAnimation outcome={outcome} spinning={spinning && !challengePhase} onDismiss={handleOutcomeDismiss} blocked={spinBlockedRef.current} />
       <ChallengeOverlay phase={challengePhase} accuserIndex={challengeAccuser} accusedIndex={challengeAccused} onDismiss={() => setChallengePhase(null)} />
 
       {/* Nav */}
@@ -467,7 +481,7 @@ export default function GameRoom() {
           </div>
         )}
 
-        {state === 'Dealing' && !outcome && (
+        {state === 'Dealing' && !spinOverlayActive && (
           <DealingProgress gameId={Number(id!)} gameMode={mode} round={round} />
         )}
 
@@ -585,7 +599,7 @@ export default function GameRoom() {
           </div>
         )}
 
-        {state === 'GameOver' && !outcome && (
+        {state === 'GameOver' && !spinOverlayActive && (
           <div style={{ textAlign: 'center' }} id="game-result-card">
             <h2 style={{ fontSize: '2.2rem', color: '#c9a84c', marginBottom: '1.5rem' }}>WINNER!</h2>
             {(() => {
@@ -640,7 +654,7 @@ export default function GameRoom() {
       </div>
 
       {/* Bottom — Hand + Actions (show during all active game states, including Dealing) */}
-      {myPlayer?.alive && (state === 'Dealing' || state === 'PlayerTurn' || state === 'Challenging' || state === 'Spinning' || state === 'MultiSpinning') && (
+      {myPlayer?.alive && !spinOverlayActive && (state === 'Dealing' || state === 'PlayerTurn' || state === 'Challenging' || state === 'Spinning' || state === 'MultiSpinning') && (
         <div style={{ padding: '1rem 1.5rem', background: 'rgba(0,0,0,0.5)', borderTop: '1px solid #3a2a1a', zIndex: 20 }}>
           <div className="chambers" style={{ justifyContent: 'center', marginBottom: '0.6rem' }}>
             {Array.from({ length: 6 }, (_, i) => <div key={i} className={`chamber ${i < chamberPointer ? 'safe' : ''}`} style={{ width: 12, height: 12 }} />)}

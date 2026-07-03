@@ -60,6 +60,13 @@ export function useAutoAction() {
     dealAbortRef.current = ctrl;
 
     const driveDealing = async () => {
+      // Wait until spin overlay is dismissed before starting deal txs
+      // This preserves the drama — player must see click/bang before dealing begins
+      while (useGameStore.getState().spinOverlayActive) {
+        if (ctrl.signal.aborted) return;
+        await new Promise(r => setTimeout(r, 300));
+      }
+      if (ctrl.signal.aborted) return;
       const { address: gameAddr, abi } = getContracts(gameMode);
       const { address: deckAddr, abi: deckAbi } = getDeckContracts(gameMode);
       const rid = BigInt(gameId) * 100n + BigInt(round);
