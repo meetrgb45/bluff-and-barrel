@@ -213,9 +213,8 @@ export default function Landing() {
             <p style={{ fontSize: '0.65rem', color: '#5a4a3a', marginTop: '0.3rem' }}>© 2026 The Underground. For the deceptive only.</p>
           </div>
           <div style={{ display: 'flex', gap: '1.5rem' }}>
-            {['Discord', 'Twitter', 'GitHub'].map(link => (
-              <a key={link} href="#" style={{ fontSize: '0.75rem', color: '#8b7b5a', textDecoration: 'none', letterSpacing: '0.1em' }}>{link.toUpperCase()}</a>
-            ))}
+            <a href="https://twitter.com/bluffandbarrel" target="_blank" rel="noreferrer" style={{ fontSize: '0.75rem', color: '#8b7b5a', textDecoration: 'none', letterSpacing: '0.1em' }}>TWITTER</a>
+            <a href="https://github.com/meetrgb45/bluff-and-barrel" target="_blank" rel="noreferrer" style={{ fontSize: '0.75rem', color: '#8b7b5a', textDecoration: 'none', letterSpacing: '0.1em' }}>GITHUB</a>
             <a href="/btc-market" style={{ fontSize: '0.75rem', color: '#8b7b5a', textDecoration: 'none', letterSpacing: '0.1em' }}>BTC MARKET</a>
             <a href="/roadmap" style={{ fontSize: '0.75rem', color: '#c9a84c', textDecoration: 'none', letterSpacing: '0.1em' }}>ROADMAP</a>
           </div>
