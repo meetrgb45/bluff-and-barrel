@@ -114,6 +114,7 @@ export default function GameRoom() {
   const pendingSpinner = useGameStore((s) => s.pendingSpinner);
   const spinOverlayActive = useGameStore((s) => s.spinOverlayActive);
   const setSpinOverlayActive = useGameStore((s) => s.setSpinOverlayActive);
+  const resetPlayedCards = useGameStore((s) => s.resetPlayedCards);
 
   const myPlayer = players.find((p) => p.addr?.toLowerCase() === address?.toLowerCase());
   const myIndex = players.findIndex((p) => p.addr?.toLowerCase() === address?.toLowerCase());
