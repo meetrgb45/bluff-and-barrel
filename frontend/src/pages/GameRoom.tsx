@@ -163,13 +163,6 @@ export default function GameRoom() {
   // Reset triggered when state changes
   useEffect(() => { if (state !== 'MultiSpinning') setTriggered(false); }, [state]);
 
-  // Auto-clear spin outcome when we leave spinning states — prevents stale overlay on next phase
-  useEffect(() => {
-    if (state !== 'Spinning' && state !== 'MultiSpinning' && state !== 'Shooting') {
-      clearOutcome();
-    }
-  }, [state, clearOutcome]);
-
   // Sound on game over
   useEffect(() => { if (state === 'GameOver') sounds.gameOver(); }, [state]);
 
@@ -474,7 +467,7 @@ export default function GameRoom() {
           </div>
         )}
 
-        {state === 'Dealing' && (
+        {state === 'Dealing' && !outcome && (
           <DealingProgress gameId={Number(id!)} gameMode={mode} round={round} />
         )}
 
@@ -592,7 +585,7 @@ export default function GameRoom() {
           </div>
         )}
 
-        {state === 'GameOver' && (
+        {state === 'GameOver' && !outcome && (
           <div style={{ textAlign: 'center' }} id="game-result-card">
             <h2 style={{ fontSize: '2.2rem', color: '#c9a84c', marginBottom: '1.5rem' }}>WINNER!</h2>
             {(() => {

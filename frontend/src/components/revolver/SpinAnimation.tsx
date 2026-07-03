@@ -35,6 +35,9 @@ export default function SpinAnimation({ outcome, spinning, onDismiss, blocked = 
       return () => clearTimeout(t);
     } else if (outcome) {
       setPhase('result');
+      // Auto-dismiss after 8s if player doesn't tap — then next phase can render
+      const t = setTimeout(() => { setPhase(null); onDismiss(); }, 8000);
+      return () => clearTimeout(t);
     } else if (!spinning && !outcome) {
       setPhase(null);
     }

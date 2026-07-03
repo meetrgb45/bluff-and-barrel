@@ -72,20 +72,20 @@ The game has two secrecy requirements: your cards must be hidden from other play
 
 **Challenge verification** — when LIAR is called, the contract runs `FHE.eq(card, targetCard)` for each played card, all in encrypted space. The result is an encrypted boolean (`ebool`) — even the contract doesn't know if the claim was valid. `FHE.makePubliclyDecryptable()` marks it for public decryption. Any player's frontend calls `useDecryptPublicValues()`, gets the cleartext result plus a Zama KMS cryptographic proof, and submits both on-chain. `FHE.checkSignatures()` verifies the proof and the state machine advances.
 
-**Bullet / spin** — the bullet position is `FHE.randEuint8()` bounded to chambers 1–6, assigned at game start. Each spin increments a plaintext chamber counter and computes `FHE.eq(bulletPosition, chamberPointer)` — producing an `ebool` that gets publicly decrypted via the same proof flow. The result (bang or click) is provably fair and was never visible to anyone until that moment.
+**Bullet / spin** — the bullet position is `FHE.randEuint8()` bounded to chambers 1–6, assigned **once at game start** and never changed. Each time a player spins, a plaintext chamber counter increments and `FHE.eq(bulletPosition, chamberPointer)` computes the result — an `ebool` that gets publicly decrypted via the same proof flow. The counter accumulates across all rounds — survive 5 spins and the 6th is a guaranteed BANG. The result (bang or click) is provably fair and was never visible to anyone until that moment.
 
 ---
 
 ## Deployed Contracts (Ethereum Sepolia)
 
 ```
-Revolver:     0x92be89Da8D869B2e57C4A0CA027b35735e9BF484
-Basic Game:   0xF4605cCd9a48f46a4AfD9d976b70386DccFC40F7
-Basic Deck:   0xA34345bBA0AcB2fd69323B41d66902201C635102
-Devil Game:   0xc4069f5Bb67aB8f59F98AdBf2d3787b2Cf7201E6
-Devil Deck:   0x8E0603b91813a745f224858590a41F403e61CDf0
-Chaos Game:   0xe47942b6028Dc5F5f729b5Da5e07BD880be11b9A
-Chaos Deck:   0x298a552447f1aCe190B545D16503126b41092131
+Revolver:     0x05124ab1fE9a87DEcbDCCcA4Ee53569F390cA793
+Basic Game:   0x86B8216A3dc0eB74D66373eeF5E289d5f86574aE
+Basic Deck:   0x3cE4d64BA8aF772D7c37066979ac170109559B93
+Devil Game:   0x5EE0fc1d9E960Cc6730b9EF8077Ce7Cd26645481
+Devil Deck:   0xd5ae9Fee299646823014Db68940c99d0236BF332
+Chaos Game:   0x3c071b3D5C7E2844bb3081605F6F772AA2A2e8aC
+Chaos Deck:   0xB5ed3491f39FEb287931e7CC912601132Ed1A1ff
 
 ```
 

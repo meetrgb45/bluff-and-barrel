@@ -57,13 +57,13 @@ contract LiarsBarRevolver is ZamaEthereumConfig {
      */
     function beginSpin(uint256 gameId, address player) external onlyGame returns (bytes32 handle) {
         uint8 ptr = chamberPointer[gameId][player] + 1;
-        require(ptr <= CHAMBERS, "All chambers exhausted");
+        if (ptr > CHAMBERS) ptr = CHAMBERS; // clamp at last chamber — should never exceed in normal play
         chamberPointer[gameId][player] = ptr;
         isDoubleSpin[gameId] = false;
 
         ebool fired = FHE.eq(_bulletPosition[gameId][player], FHE.asEuint8(ptr));
         FHE.makePubliclyDecryptable(fired);
-        FHE.allow(fired, msg.sender); // game contract can reference handle
+        FHE.allow(fired, msg.sender);
 
         pendingSpinResult[gameId] = fired;
         pendingPlayerSpinResult[gameId][player] = fired;
@@ -75,7 +75,7 @@ contract LiarsBarRevolver is ZamaEthereumConfig {
      */
     function spinForTarget(uint256 gameId, address target) external onlyGame returns (bytes32 handle) {
         uint8 ptr = chamberPointer[gameId][target] + 1;
-        require(ptr <= CHAMBERS, "All chambers exhausted");
+        if (ptr > CHAMBERS) ptr = CHAMBERS;
         chamberPointer[gameId][target] = ptr;
 
         ebool fired = FHE.eq(_bulletPosition[gameId][target], FHE.asEuint8(ptr));
@@ -89,7 +89,7 @@ contract LiarsBarRevolver is ZamaEthereumConfig {
 
     function beginDoubleSpin(uint256 gameId, address player) external onlyGame returns (bytes32 handle) {
         uint8 ptr = chamberPointer[gameId][player] + 1;
-        require(ptr + 1 <= CHAMBERS, "Not enough chambers");
+        if (ptr > CHAMBERS) ptr = CHAMBERS;
         chamberPointer[gameId][player] = ptr;
         isDoubleSpin[gameId] = true;
 
@@ -129,5 +129,14 @@ contract LiarsBarRevolver is ZamaEthereumConfig {
 
     function getChamberPointer(uint256 gameId, address player) external view returns (uint8) {
         return chamberPointer[gameId][player];
+    }
+
+    /**
+     * @notice Reset chamber pointer to 0 for a new round.
+     *         Does NOT change bullet position — same bullet loaded at game start.
+     *         Called by game contract at the start of each round.
+     */
+    function resetChamberPointer(uint256 gameId, address player) external onlyGame {
+        chamberPointer[gameId][player] = 0;
     }
 }
