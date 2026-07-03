@@ -198,6 +198,7 @@ contract LiarsBarGame is ZamaEthereumConfig, ILiarsBarGame {
     ) external {
         Game storage g = games[gameId];
         if (g.state != GameState.Spinning) revert NotInCorrectPhase();
+        require(_isParticipant(gameId, msg.sender), "Not participant");
 
         bytes32[] memory handles = new bytes32[](1);
         handles[0] = g.pendingSpinHandle;

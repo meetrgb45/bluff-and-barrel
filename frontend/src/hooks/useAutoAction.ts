@@ -42,6 +42,13 @@ export function useAutoAction() {
   const isMyTurn = players[currentTurnIndex]?.addr?.toLowerCase() === address?.toLowerCase();
   const isHost = players[0]?.addr?.toLowerCase() === address?.toLowerCase();
 
+  // If the host (player[0]) got eliminated, the first alive player drives dealing instead.
+  // dealNextPlayer on-chain only requires _isParticipant, not host.
+  const firstAliveAddr = players.find(p =>
+    p.alive && p.addr !== '0x0000000000000000000000000000000000000000'
+  )?.addr?.toLowerCase();
+  const isDealer = firstAliveAddr === address?.toLowerCase();
+
   // Reset auto-act flag on turn/state change
   useEffect(() => {
     autoActedRef.current = false;
@@ -54,7 +61,7 @@ export function useAutoAction() {
       dealAbortRef.current?.abort();
       return;
     }
-    if (!publicClient || gameId === null || !address || !isHost) return;
+    if (!publicClient || gameId === null || !address || !isDealer) return;
 
     const ctrl = new AbortController();
     dealAbortRef.current = ctrl;

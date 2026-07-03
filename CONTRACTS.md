@@ -3,14 +3,15 @@
 ## Deployed on Ethereum Sepolia
 
 ```
-Revolver:     0x05124ab1fE9a87DEcbDCCcA4Ee53569F390cA793
-Basic Game:   0x86B8216A3dc0eB74D66373eeF5E289d5f86574aE
-Basic Deck:   0x3cE4d64BA8aF772D7c37066979ac170109559B93
-Devil Game:   0x5EE0fc1d9E960Cc6730b9EF8077Ce7Cd26645481
-Devil Deck:   0xd5ae9Fee299646823014Db68940c99d0236BF332
-Chaos Game:   0x3c071b3D5C7E2844bb3081605F6F772AA2A2e8aC
-Chaos Deck:   0xB5ed3491f39FEb287931e7CC912601132Ed1A1ff
-USDC:         0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238
+Revolver:              0x81345Ac22dF09c14D2Ae1C1d316Fc40573aEa66e
+Basic Game:            0x2E56c3D077695bBE6f57740eF071Ed9041724D9c
+Basic Deck:            0x6c33C34e321df3de7B5525dEb45A8FeE9b19C92F
+Devil Game:            0x372297170EBc5340d9490Ac8d3299c7D56B2B405
+Devil Deck:            0x438986d052B64D7B70077f1b39Dc45246a5f9f7A
+Chaos Game:            0x5807B5aA41f733F60Cc23179cC931e2eCAeFb0A8
+Chaos Deck:            0x9e55EB90ceD2d00824FF5E503a63743d561Fb74D
+USDC:                  0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238
+BTC 1 Min Market:      0xB38104FE8D69Ac103aD423907795153630cf9a28
 ```
 
 ---
@@ -22,6 +23,7 @@ USDC:         0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238
 | Decrypt own hand | `useMyHand` | `sdk.decryption.decryptValues([{encryptedValue, contractAddress}])` |
 | Resolve challenge | `useChallenge` | `useDecryptPublicValues().mutateAsync([handle])` |
 | Resolve spin | `useSpin` | `useDecryptPublicValues().mutateAsync([handle])` |
+| Encrypt bet direction | `BtcMarket.tsx` | `sdk.encrypt({ values: [{type:'euint8', value}], contractAddress, userAddress })` |
 
 All from `@zama-fhe/react-sdk` + `@zama-fhe/sdk`. `ZamaProvider` in `App.tsx` handles init.
 
@@ -35,7 +37,8 @@ All from `@zama-fhe/react-sdk` + `@zama-fhe/sdk`. `ZamaProvider` in `App.tsx` ha
 createGame(characterId, stakeAmount) → gameId
 joinGame(gameId, characterId)
 startGame(gameId)                    // host only, 2–4 players
-dealNextPlayer(gameId)               // host calls 3× after startGame to complete dealing
+dealNextPlayer(gameId)               // any participant can call; host drives 3× via useAutoAction
+                                     // if host is eliminated, first alive player takes over
 playCards(gameId, cardIndices[])     // Basic + Devil
 playCard(gameId, cardIndex)          // Chaos only (single card)
 callLiar(gameId)
@@ -43,18 +46,18 @@ forceTimeout(gameId)
 
 // Zama 3-step: publicDecrypt off-chain → submit proof on-chain
 publishChallengeResult(gameId, allValid, abiEncoded, proof)
-publishSpinResult(gameId, fired, abiEncoded, proof)
+publishSpinResult(gameId, fired, abiEncoded, proof)  // requires _isParticipant (CRIT-1 fixed)
 
 // Views:
-getGameState(gameId)    → (state, round, targetCard, currentTurnIndex, aliveCount, winner)
-getPlayer(gameId, i)    → (addr, alive, points, usedExecute, usedDoubleSpin, characterId)
-getLastClaim(gameId)    → (claimant, count)
+getGameState(gameId)             → (state, round, targetCard, currentTurnIndex, aliveCount, winner)
+getPlayer(gameId, i)             → (addr, alive, points, usedExecute, usedDoubleSpin, characterId)
+getLastClaim(gameId)             → (claimant, count)
 getPendingSpinner(gameId)        → address
 getPendingChallengeHandle(gameId) → bytes32
-getPendingSpinHandle(gameId)      → bytes32
-getRevealHandles(gameId)          → bytes32[]   // set by callLiar for client-side card reveal
-getTurnDeadline(gameId)           → uint256
-getStakeAmount(gameId)            → uint256
+getPendingSpinHandle(gameId)     → bytes32
+getRevealHandles(gameId)         → bytes32[]   // set by callLiar for client-side card reveal
+getTurnDeadline(gameId)          → uint256
+getStakeAmount(gameId)           → uint256
 ```
 
 ### Devil Mode Extra
@@ -70,9 +73,32 @@ getMultiSpinHandle(gameId, player)  → bytes32
 publishCardReveal(gameId, cardValue, abiEncoded, proof)  // single uint8 — determines routing
 chooseTarget(gameId, target)
 chooseTargetMulti(gameId, target)
-getShooter(gameId)          → address
-getMultiShooters(gameId)    → address[]
+getShooter(gameId)             → address
+getMultiShooters(gameId)       → address[]
 getPendingRevealHandle(gameId) → bytes32
+```
+
+### BTC 1 Min Market (beta)
+```solidity
+// Oracle
+startRound(startPrice)
+finalizeRound(roundId, endPrice)
+
+// Player
+placeBet(roundId, encHandle, inputProof)   // direction encrypted as euint8 (0=DOWN, 1=UP)
+requestClaim(roundId)                      // makePubliclyDecryptable on direction
+claimWithProof(roundId, plainDir, kmsProof) // FHE.checkSignatures → pay out points if correct
+
+// Admin
+addPoints(user, amount)                    // owner only — grant test points
+
+// Views
+getCurrentRound()      → uint256
+getRoundState(roundId) → (started, startTime, endTime, startPrice, endPrice, finalized, result, betCount)
+getBet(roundId, user)  → (exists, points, claimed, claimOpen)
+getBetHandle(roundId, user) → bytes32
+getPoints(user)        → uint256
+getTimeRemaining(roundId) → uint256
 ```
 
 ---
@@ -100,7 +126,7 @@ This creates escalating tension: every spin a player survives narrows the window
 | Deck | Composition | Hand Size |
 |------|------------|-----------|
 | Basic | 6A + 6K + 6Q + 2J | 5 |
-| Devil | 5T + 6 + 6 + 2J + 1Devil | 5 |
+| Devil | 5A + 6K + 6Q + 2J + 1Devil | 5 |
 | Chaos | 5K + 5Q + 1Master + 1Chaos | 3 |
 
 Card values: `0=Ace/King, 1=King/Queen, 2=Queen/Master, 3=Joker/Chaos, 4=Devil`
@@ -116,7 +142,9 @@ startGame()          → deck.initDeal(rid, players)    — deals player 0 (~75 
 dealNextPlayer() ×3  → deck.dealNextPlayer(rid)       — deals players 1,2,3 (~75 ops each)
 ```
 
-The host drives all 4 `dealNextPlayer` calls automatically via `useAutoAction`.
+`dealNextPlayer` requires `_isParticipant` — any alive player can call it. `useAutoAction` in the frontend assigns the role to the **first alive player** (falls back from player[0] if the host was eliminated).
+
+Note: `rid = gameId * 100 + round` — collision risk at round 100+, not reachable in normal play.
 
 ---
 
@@ -142,3 +170,15 @@ WaitingForPlayers → Dealing → PlayerTurn → Challenging → Spinning → (b
 
 Devil extra states: `MultiSpinning`
 Chaos extra states: `Targeting`, `MultiTargeting`, `Shooting`
+
+---
+
+## Security Notes
+
+| ID | Status | Description |
+|----|--------|-------------|
+| CRIT-1 | ✅ Fixed | `publishSpinResult` now requires `_isParticipant` in all 3 modes |
+| CRIT-3 | ✅ Fixed | Chaos verdict corrected — `accuser` shoots when accused was honest |
+| CRIT-4 | ✅ Already fixed | DevilGame both branches clear handle and advance state |
+| CRIT-2 | ⚠️ Open | Payout uses `stakeAmount × 4` regardless of player count — avoid 2–3 player staked games |
+

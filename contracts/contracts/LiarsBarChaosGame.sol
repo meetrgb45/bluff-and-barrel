@@ -173,7 +173,7 @@ contract LiarsBarChaosGame is ZamaEthereumConfig {
         } else {
             // Regular card
             g.state = GameState.Targeting;
-            g.shooter = allValid ? accused : accuser; // allValid=true means accuser was wrong
+            g.shooter = allValid ? accuser : accused; // allValid=true → accused was honest → accuser shoots
             emit ChallengeResolved(gameId, !allValid, card);
         }
     }
@@ -212,6 +212,8 @@ contract LiarsBarChaosGame is ZamaEthereumConfig {
     function publishSpinResult(uint256 gameId, bool fired, bytes calldata abiEncoded, bytes calldata proof) external {
         Game storage g = games[gameId];
         require(g.state == GameState.Shooting, "Not shooting");
+        require(_isParticipant(gameId, msg.sender), "Not participant");
+        require(_isParticipant(gameId, msg.sender), "Not participant");
         bytes32[] memory h = new bytes32[](1); h[0] = g.pendingSpinHandle;
         FHE.checkSignatures(h, abiEncoded, proof);
 

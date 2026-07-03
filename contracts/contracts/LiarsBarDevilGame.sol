@@ -180,6 +180,7 @@ contract LiarsBarDevilGame is ZamaEthereumConfig {
     function publishSpinResult(uint256 gameId, bool fired, bytes calldata abiEncoded, bytes calldata proof) external {
         Game storage g = games[gameId];
         require(g.state == GameState.Spinning || g.state == GameState.MultiSpinning, "Not spinning");
+        require(_isParticipant(gameId, msg.sender), "Not participant");
 
         if (g.state == GameState.Spinning) {
             bytes32[] memory h = new bytes32[](1); h[0] = g.pendingSpinHandle;
