@@ -44,6 +44,7 @@ contract LiarsBarGame is ZamaEthereumConfig, ILiarsBarGame {
         address winner;
         uint256 turnDeadline;
         uint256 stakeAmount;
+        uint8 playerCount;
     }
 
     uint256 public constant TURN_TIMEOUT = 60;
@@ -98,6 +99,7 @@ contract LiarsBarGame is ZamaEthereumConfig, ILiarsBarGame {
         if (g.state != GameState.WaitingForPlayers) revert NotInCorrectPhase();
         if (_playerCount(g) < 2) revert GameNotFull();
         require(msg.sender == g.players[0].addr, "Only host");
+        g.playerCount = uint8(_playerCount(g));
         g.state = GameState.Dealing;
         emit GameStarted(gameId);
         for (uint8 i = 0; i < 4; i++) if (g.players[i].addr != address(0)) revolver.initRevolver(gameId, g.players[i].addr);
@@ -381,7 +383,7 @@ contract LiarsBarGame is ZamaEthereumConfig, ILiarsBarGame {
                     g.winner = g.players[i].addr;
                     g.state = GameState.GameOver;
                     if (g.stakeAmount > 0) {
-                        uint256 pot = g.stakeAmount * 4;
+                        uint256 pot = g.stakeAmount * g.playerCount;
                         uint256 fee = (pot * FEE_BPS) / 10000;
                         require(usdc.transfer(treasury, fee), "Fee failed");
                         require(usdc.transfer(g.winner, pot - fee), "Payout failed");

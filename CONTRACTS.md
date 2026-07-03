@@ -3,13 +3,13 @@
 ## Deployed on Ethereum Sepolia
 
 ```
-Revolver:              0x81345Ac22dF09c14D2Ae1C1d316Fc40573aEa66e
-Basic Game:            0x2E56c3D077695bBE6f57740eF071Ed9041724D9c
-Basic Deck:            0x6c33C34e321df3de7B5525dEb45A8FeE9b19C92F
-Devil Game:            0x372297170EBc5340d9490Ac8d3299c7D56B2B405
-Devil Deck:            0x438986d052B64D7B70077f1b39Dc45246a5f9f7A
-Chaos Game:            0x5807B5aA41f733F60Cc23179cC931e2eCAeFb0A8
-Chaos Deck:            0x9e55EB90ceD2d00824FF5E503a63743d561Fb74D
+Revolver:              0x37aBfD55137cF0BfBedb118213ca6EE39B59CE77
+Basic Game:            0xb1e8E43dd83138d42a87AAE28ce2ffEA0f1Df622
+Basic Deck:            0x8f9267Db3eEf635123a94912Ac12eB5675b2aaEd
+Devil Game:            0x21848A11d5be3b9c39e71b7348E7c46b9B464A2B
+Devil Deck:            0x8251309E65aA60c223cDFAA91819dd5623BCaa93
+Chaos Game:            0x96Da3b705E3Bd95c70927732e6656FA337E1FEfe
+Chaos Deck:            0x3011DFd4076a2E6556591Acd57d7f9894cAe3bBd
 USDC:                  0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238
 BTC 1 Min Market:      0xB38104FE8D69Ac103aD423907795153630cf9a28
 ```
@@ -180,5 +180,5 @@ Chaos extra states: `Targeting`, `MultiTargeting`, `Shooting`
 | CRIT-1 | ✅ Fixed | `publishSpinResult` now requires `_isParticipant` in all 3 modes |
 | CRIT-3 | ✅ Fixed | Chaos verdict corrected — `accuser` shoots when accused was honest |
 | CRIT-4 | ✅ Already fixed | DevilGame both branches clear handle and advance state |
-| CRIT-2 | ⚠️ Open | Payout uses `stakeAmount × 4` regardless of player count — avoid 2–3 player staked games |
+| CRIT-2 | ✅ Fixed | `playerCount` stored at `startGame`, payout uses actual player count |
 
