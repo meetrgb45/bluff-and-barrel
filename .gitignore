@@ -32,6 +32,9 @@ contracts/cache/
 contracts/artifacts/
 contracts/typechain-types/
 
+# Keep compiled ABIs in git — Vercel build needs them
+!frontend/src/lib/abis/
+
 # Vite
 frontend/dist/
 
