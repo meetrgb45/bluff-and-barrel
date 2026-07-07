@@ -153,15 +153,17 @@ export default function Lobby() {
             {(Object.keys(MODE_CONFIG) as Mode[]).map((m) => (
               <button
                 key={m}
-                onClick={() => !modeLocked && setMode(m)}
+                onClick={() => !modeLocked && m !== 'chaos' && setMode(m)}
                 className={`btn ${mode === m ? 'green' : ''}`}
                 style={{
                   flex: 1, padding: '0.55rem 0', fontSize: '0.85rem',
-                  opacity: mode === m ? 1 : 0.4,
-                  cursor: modeLocked ? 'default' : 'pointer',
+                  opacity: m === 'chaos' ? 0.3 : mode === m ? 1 : 0.4,
+                  cursor: modeLocked || m === 'chaos' ? 'not-allowed' : 'pointer',
                 }}
+                title={m === 'chaos' ? 'Coming soon' : undefined}
+                disabled={m === 'chaos'}
               >
-                {MODE_CONFIG[m].label}
+                {m === 'chaos' ? 'Chaos 🔒' : MODE_CONFIG[m].label}
               </button>
             ))}
             <button onClick={() => setShowRules(true)} style={{ width: 32, height: 32, borderRadius: '50%', background: '#1a1008', border: '2px solid #5a4a3a', color: '#c9a84c', fontSize: '1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>?</button>

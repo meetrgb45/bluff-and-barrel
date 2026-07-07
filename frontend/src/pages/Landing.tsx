@@ -128,27 +128,27 @@ export default function Landing() {
             </div>
           </div>
 
-          {/* Chaos Mode — LIVE */}
-          <div style={{ position: 'relative', borderRadius: '0.75rem', overflow: 'hidden' }}>
-            <div style={{ position: 'absolute', inset: -2, background: 'linear-gradient(to bottom, #a855f7, #6b1a8b)', borderRadius: '0.85rem', opacity: 0.6, filter: 'blur(2px)' }} />
-            <div style={{ position: 'relative', background: '#1a110d', borderRadius: '0.75rem', padding: '1.5rem', border: '1px solid rgba(168,85,247,0.3)', boxShadow: '0 0 20px rgba(168,85,247,0.15)', display: 'flex', flexDirection: 'column', height: '100%' }}>
+          {/* Chaos Mode — COMING SOON */}
+          <div style={{ position: 'relative', borderRadius: '0.75rem', overflow: 'hidden', opacity: 0.6 }}>
+            <div style={{ position: 'absolute', inset: -2, background: 'linear-gradient(to bottom, #a855f7, #6b1a8b)', borderRadius: '0.85rem', opacity: 0.3, filter: 'blur(2px)' }} />
+            <div style={{ position: 'relative', background: '#1a110d', borderRadius: '0.75rem', padding: '1.5rem', border: '1px solid rgba(168,85,247,0.15)', display: 'flex', flexDirection: 'column', height: '100%' }}>
               <div style={{ marginBottom: '1rem' }}>
-                <span style={{ background: '#a855f7', color: '#fff', padding: '0.2rem 0.6rem', fontSize: '0.7rem', fontWeight: 'bold', letterSpacing: '0.1em' }}>LIVE</span>
+                <span style={{ background: '#3a2a4a', color: '#a855f7', padding: '0.2rem 0.6rem', fontSize: '0.7rem', fontWeight: 'bold', letterSpacing: '0.1em', border: '1px solid #a855f730' }}>COMING SOON</span>
               </div>
               <div style={{ width: '100%', aspectRatio: '4/3', background: '#251f12', borderRadius: '0.5rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <div style={{ display: 'flex' }}>
                   {['master1', 'chaos1', 'king1'].map((c, i) => (
-                    <div key={i} className="playing-card" style={{ backgroundImage: `url(/playing_card/${c}.png)`, width: '3.5rem', transform: `rotate(${(i-1)*8}deg)`, marginLeft: i > 0 ? '-1rem' : 0 }} />
+                    <div key={i} className="playing-card" style={{ backgroundImage: `url(/playing_card/${c}.png)`, width: '3.5rem', transform: `rotate(${(i-1)*8}deg)`, marginLeft: i > 0 ? '-1rem' : 0, filter: 'grayscale(0.6)' }} />
                   ))}
                 </div>
               </div>
-              <h3 style={{ fontSize: '1.3rem', color: '#a855f7', marginBottom: '0.4rem' }}>Chaos Mode</h3>
-              <p style={{ fontSize: '0.75rem', color: '#8b7b5a', marginBottom: '0.5rem', lineHeight: 1.5 }}>
+              <h3 style={{ fontSize: '1.3rem', color: '#6b4a8b', marginBottom: '0.4rem' }}>Chaos Mode</h3>
+              <p style={{ fontSize: '0.75rem', color: '#5a4a6a', marginBottom: '0.5rem', lineHeight: 1.5 }}>
                 3 cards each — King, Queen, Master, Chaos. Winners shoot opponents. The Master flips blame. The Chaos card triggers a simultaneous all-player firefight.
               </p>
-              <p style={{ fontSize: '0.65rem', color: '#5a4a3a', marginBottom: '1rem', flex: 1 }}>4 players · Target shooting · Chaos trigger</p>
-              <button className="btn" style={{ width: '100%', fontSize: '1rem', padding: '0.7rem', borderColor: '#a855f7', color: '#a855f7' }} onClick={() => navigate('/lobby?mode=chaos')}>
-                PLAY NOW
+              <p style={{ fontSize: '0.65rem', color: '#3a2a4a', marginBottom: '1rem', flex: 1 }}>Under development — coming soon</p>
+              <button className="btn" style={{ width: '100%', fontSize: '1rem', padding: '0.7rem', borderColor: '#3a2a4a', color: '#5a4a6a', cursor: 'not-allowed', opacity: 0.5 }} disabled>
+                COMING SOON
               </button>
             </div>
           </div>

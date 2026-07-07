@@ -12,7 +12,7 @@ const phases = [
     cards: ['ace1', 'king1', 'queen1'],
   },
   {
-    date: 'August 2026',
+    date: 'July 2026',
     title: 'Devil Mode',
     status: 'live',
     img: '/card-barrel.png',
@@ -23,7 +23,7 @@ const phases = [
   {
     date: 'August 2026',
     title: 'Chaos Mode',
-    status: 'live',
+    status: 'in-progress',
     img: '/card-barrel.png',
     desc: '3 cards each. Winners don\'t spin — they shoot. The Master card flips the blame. The Chaos card triggers a simultaneous all-player firefight.',
     items: ['3-card hands', 'Target selection mechanic', 'Master + Chaos specials', 'Multi-target resolution'],
